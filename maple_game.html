@@ -668,6 +668,7 @@
           <div class="kb"><span>Inventory</span><span><kbd>B</kbd></span></div>
           <div class="kb"><span>Skill Tree</span><span><kbd>K</kbd></span></div>
           <div class="kb"><span>Character Sheet</span><span><kbd>U</kbd></span></div>
+          <div class="kb"><span>Dev Console</span><span><kbd>1</kbd>+<kbd>2</kbd>+<kbd>3</kbd></span></div>
           <div class="kb"><span>Help Panel</span><span><kbd>?</kbd></span></div>
           <div class="kb"><span>HP Potion</span><span><kbd>R</kbd></span></div>
           <div class="kb"><span>MP Potion</span><span><kbd>T</kbd></span></div>
@@ -728,6 +729,18 @@
     </div>
   </div>
 
+  <div id="dev-modal" class="modal-overlay">
+    <div class="modal" style="position:relative; min-width:680px; max-width:760px; border:2px solid #ffcc44; background:linear-gradient(160deg,#1a1520,#0a0818);">
+      <button class="close-btn" onclick="closeAllModals()">✕</button>
+      <h2 style="color:#ffcc44;">🛠 Developer Console</h2>
+      <div style="text-align:center; margin-bottom:10px; color:#ffaa66; font-size:11px;">
+        Cheats — NOT for production play. Press <kbd>1</kbd>+<kbd>2</kbd>+<kbd>3</kbd> to toggle.
+      </div>
+      <div id="dev-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
+      <div id="dev-log" style="margin-top:12px; padding:8px; background:rgba(0,0,0,0.5); border-radius:4px; font-size:11px; color:#ccc; min-height:24px; font-family:monospace;"></div>
+    </div>
+  </div>
+
   <div id="enhance-modal" class="modal-overlay">
     <div class="modal" style="position:relative; min-width:600px; max-width:680px; max-height:520px; display:flex; flex-direction:column;">
       <button class="close-btn" onclick="closeAllModals()">✕</button>
@@ -777,7 +790,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.4.0';
+const GAME_VERSION = 'v0.4.1';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1872,6 +1885,13 @@ window.addEventListener('keydown', e => {
       showToast('Pick a class first', 'common');
     }
   }
+  // Dev console — 1+2+3 held together
+  if (k === '1' || k === '2' || k === '3') {
+    if (game.keys['1'] && game.keys['2'] && game.keys['3'] && !game._devComboFired) {
+      game._devComboFired = true;
+      openDevConsole();
+    }
+  }
   if (k === '?' || k === '/') openHelp();
   if (k === 'escape') closeAllModals();
   // Quick potion use
@@ -1894,7 +1914,14 @@ window.addEventListener('keydown', e => {
     }
   }
 });
-window.addEventListener('keyup', e => { game.keys[e.key.toLowerCase()] = false; });
+window.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  game.keys[k] = false;
+  // Release dev combo guard once any of 1/2/3 lifts
+  if ((k === '1' || k === '2' || k === '3') && (!game.keys['1'] || !game.keys['2'] || !game.keys['3'])) {
+    game._devComboFired = false;
+  }
+});
 
 // =========================================================================
 // CLASS / JOB SYSTEM
@@ -3971,7 +3998,7 @@ function updateMonsters(dt) {
         player.mp -= mpAbsorb;
         dmg = Math.max(0, dmg - hpSaved);
       }
-      player.hp -= dmg;
+      player.hp -= (player._god ? 0 : dmg);
       player.lastHitTime = game.time;
       // Skill tree: Unstoppable — stun immune
       player.hitStun = player.tree.stunImmune ? 0 : Math.floor(140 * (1 - getStunResist()));
@@ -4260,6 +4287,8 @@ function bossAI(m, dt, distToPlayer) {
 // HIT / DEATH
 // =========================================================================
 function hitMonster(m, dmg, isCrit, skill) {
+  // Dev cheat — one-shot kills anything
+  if (player._oneShot) dmg = 999999;
   // Class perks
   if (skill !== 'thorns') {
     // Rogue — Shadowstep: +35% damage for 1s after dodge
@@ -4888,7 +4917,7 @@ function updateProjectiles(dt) {
         const defUsed = isMagic ? getMagicDef() : getDef();
         let dmg = Math.max(1, Math.floor(p.damage) - defUsed);
         if (player.cls === 'warrior') dmg = Math.max(1, Math.floor(dmg * 0.82));
-        player.hp -= dmg;
+        player.hp -= (player._god ? 0 : dmg);
         player.lastHitTime = game.time;
         const stunMul = 1 - getStunResist();
         player.hitStun = 1500 * stunMul;
@@ -5420,6 +5449,164 @@ function openAttributes() {
   game.paused = true;
 }
 
+// =========================================================================
+// DEVELOPER CONSOLE
+// =========================================================================
+function devLog(msg) {
+  const el = document.getElementById('dev-log');
+  if (el) el.textContent = '> ' + msg;
+}
+
+function renderDev() {
+  const grid = document.getElementById('dev-grid');
+  const btn = (label, cb, color) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = `padding:6px 10px; background:${color||'#443'}; color:#fff; border:1px solid #776; border-radius:4px; cursor:pointer; font-size:12px; margin:2px;`;
+    b.onclick = cb;
+    return b;
+  };
+  const makeSection = (title, color) => {
+    const s = document.createElement('div');
+    s.style.cssText = `background:rgba(0,0,0,0.35); border:1px solid ${color}55; border-radius:6px; padding:10px;`;
+    s.innerHTML = `<div style="color:${color}; font-weight:bold; font-size:13px; margin-bottom:6px;">${title}</div>`;
+    return s;
+  };
+  grid.innerHTML = '';
+
+  // ===== Progression =====
+  const progSec = makeSection('⏫ Progression', '#88ccff');
+  const lvlRow = document.createElement('div');
+  lvlRow.style.cssText = 'display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-bottom:6px;';
+  lvlRow.append('Level: ');
+  const lvlIn = document.createElement('input');
+  lvlIn.type = 'number'; lvlIn.min = 1; lvlIn.max = 99; lvlIn.value = player.level;
+  lvlIn.style.cssText = 'width:60px; padding:3px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;';
+  lvlRow.appendChild(lvlIn);
+  lvlRow.appendChild(btn('Set', () => devSetLevel(parseInt(lvlIn.value) || 1), '#4a6a8a'));
+  progSec.appendChild(lvlRow);
+  progSec.appendChild(btn('+1 Level', () => devSetLevel(player.level + 1), '#4a6a3a'));
+  progSec.appendChild(btn('+5 Levels', () => devSetLevel(player.level + 5), '#4a6a3a'));
+  progSec.appendChild(btn('+10 AP', () => { player.skillPoints += 10; devLog('+10 AP granted'); updateUI(); }, '#6a5a3a'));
+  progSec.appendChild(btn('+1000 Lumens', () => { player.mesos += 1000; devLog('+1000 Lumens'); updateUI(); }, '#8a6a3a'));
+  grid.appendChild(progSec);
+
+  // ===== Class / Job =====
+  const clsSec = makeSection('⚔ Class / Job / Master', '#ff8844');
+  const clsRow = document.createElement('div');
+  clsRow.style.cssText = 'margin-bottom:6px;';
+  clsRow.append('Class: ');
+  for (const id in CLASSES) {
+    clsRow.appendChild(btn(CLASSES[id].icon + ' ' + CLASSES[id].name, () => devSetClass(id), '#5a3a2a'));
+  }
+  clsSec.appendChild(clsRow);
+  const jobRow = document.createElement('div');
+  jobRow.style.cssText = 'margin-bottom:6px; display:flex; gap:4px; flex-wrap:wrap;';
+  jobRow.append('Job: ');
+  for (const id in JOBS) {
+    if (player.cls && JOBS[id].cls !== player.cls) continue;
+    jobRow.appendChild(btn(JOBS[id].name, () => devSetJob(id), '#6a3a4a'));
+  }
+  clsSec.appendChild(jobRow);
+  const masterRow = document.createElement('div');
+  masterRow.style.cssText = 'display:flex; gap:4px; flex-wrap:wrap;';
+  masterRow.append('Master: ');
+  for (const id in MASTERS) {
+    if (player.job && MASTERS[id].job !== player.job) continue;
+    masterRow.appendChild(btn(MASTERS[id].name, () => devSetMaster(id), '#8a3a6a'));
+  }
+  clsSec.appendChild(masterRow);
+  grid.appendChild(clsSec);
+
+  // ===== Combat =====
+  const combSec = makeSection('💥 Combat', '#ff6666');
+  combSec.appendChild(btn('Full Heal', () => { player.hp = getMaxHp(); player.mp = getMaxMp(); devLog('Healed'); }, '#4a8a4a'));
+  combSec.appendChild(btn('God Mode ' + (player._god ? 'ON' : 'OFF'), () => { player._god = !player._god; renderDev(); devLog('God mode: ' + (player._god ? 'ON' : 'OFF')); }, '#8a6a2a'));
+  combSec.appendChild(btn('One-Shot ' + (player._oneShot ? 'ON' : 'OFF'), () => { player._oneShot = !player._oneShot; renderDev(); devLog('One-shot: ' + (player._oneShot ? 'ON' : 'OFF')); }, '#8a4a2a'));
+  combSec.appendChild(btn('Kill All Monsters', () => { for (const m of [...game.monsters]) { if (!m.isBoss) m.currentHp = 0, killMonster(m); } devLog('Cleared non-boss monsters'); }, '#6a2a2a'));
+  grid.appendChild(combSec);
+
+  // ===== Teleport =====
+  const tpSec = makeSection('🗺 Teleport', '#88ff88');
+  for (const mapId in MAPS) {
+    tpSec.appendChild(btn(MAPS[mapId].name, () => devTeleport(mapId), '#3a5a3a'));
+  }
+  grid.appendChild(tpSec);
+}
+
+function devSetLevel(n) {
+  n = Math.max(1, Math.min(99, n));
+  const diff = n - player.level;
+  if (diff > 0) {
+    for (let i = 0; i < diff; i++) {
+      player.level++;
+      const hpGain = player.cls === 'warrior' ? 28 : player.cls === 'archer' ? 20 : player.cls === 'rogue' ? 16 : 14;
+      const mpGain = player.cls === 'mage' ? 22 : player.cls === 'warlock' ? 20 : 10;
+      player.maxHp += hpGain;
+      player.maxMp += mpGain;
+      player.baseAtk += player.cls === 'warrior' ? 3 : 2;
+      player.baseDef += player.cls === 'warrior' ? 2 : 1;
+      player.skillPoints += 1;
+    }
+  } else {
+    player.level = n;
+  }
+  player.exp = 0;
+  player.hp = getMaxHp();
+  player.mp = getMaxMp();
+  devLog('Level set to ' + n);
+  updateUI();
+}
+
+function devSetClass(id) {
+  applyClass(id);
+  player.job = null; player.master = null;
+  player.treeUnlocked = {}; player.tree = {};
+  devLog('Class set to ' + CLASSES[id].name);
+  renderDev();
+  updateUI();
+}
+
+function devSetJob(id) {
+  if (!player.cls) { devLog('Pick a class first'); return; }
+  if (JOBS[id].cls !== player.cls) { devLog('Job does not match class'); return; }
+  player.job = null; player.master = null;
+  applyJob(id);
+  devLog('Job set to ' + JOBS[id].name);
+  renderDev();
+  updateUI();
+}
+
+function devSetMaster(id) {
+  if (!player.job) { devLog('Pick a job first'); return; }
+  if (MASTERS[id].job !== player.job) { devLog('Master does not match job'); return; }
+  player.master = id;
+  const m = MASTERS[id];
+  if (m.stats) {
+    if (m.stats.hp)   { player.maxHp += m.stats.hp; player.hp = player.maxHp; }
+    if (m.stats.mp)   { player.maxMp += m.stats.mp; player.mp = player.maxMp; }
+    if (m.stats.atk)  player.baseAtk += m.stats.atk;
+    if (m.stats.def)  player.baseDef += m.stats.def;
+    if (m.stats.crit) player.baseCrit = (player.baseCrit || 5) + m.stats.crit;
+  }
+  devLog('Master set to ' + m.name);
+  updateUI();
+}
+
+function devTeleport(mapId) {
+  if (!MAPS[mapId]) return;
+  loadMap(mapId, 200);
+  player.x = 200; player.y = 400; player.vx = 0; player.vy = 0;
+  devLog('Teleported to ' + MAPS[mapId].name);
+  closeAllModals();
+}
+
+function openDevConsole() {
+  renderDev();
+  document.getElementById('dev-modal').style.display = 'flex';
+  game.paused = true;
+}
+
 function openSkillsModal() {
   const list = document.getElementById('skills-list');
   list.innerHTML = '';
@@ -5647,7 +5834,7 @@ function closeAllModals() {
   const cs = document.getElementById('class-select-modal');
   const av = document.getElementById('advancement-modal');
   if (cs.style.display === 'flex' || av.style.display === 'flex') return;
-  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal','attributes-modal']) {
+  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal','attributes-modal','dev-modal']) {
     document.getElementById(id).style.display = 'none';
   }
   document.getElementById('dialog').style.display = 'none';
@@ -8461,7 +8648,7 @@ function drawHazards() {
           Math.abs((player.x + player.w/2) - h.cx) < h.w/2 &&
           player.y + player.h > h.y && player.y + player.h < h.y + h.h + 10) {
         const dmg = Math.max(1, Math.floor(h.atk - getDef() * 0.5));
-        player.hp -= dmg;
+        player.hp -= (player._god ? 0 : dmg);
         player.invulnerable = 400;
         game.damageNumbers.push({
           x: player.x + 14, y: player.y, vy: -2,
