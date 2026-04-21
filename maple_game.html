@@ -790,7 +790,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.4.2';
+const GAME_VERSION = 'v0.4.3';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -837,7 +837,7 @@ const game = {
 // Skill definitions. cls = class, job = required advancement, slot = key binding (j/k/l/u/i/o/h)
 const SKILLS = {
   // ============ WARRIOR ============
-  slash:        { name:'Slash',          icon:'🗡️', cls:'warrior', slot:'d', mp:0,  cd:260,  desc:'Quick sword swing.' },
+  slash:        { name:'Slash',          icon:'🗡️', cls:'warrior', slot:'d', mp:0,  cd:380,  desc:'Heavy sword sweep — slow but long reach.' },
   powerStrike:  { name:'Power Strike',   icon:'💥', cls:'warrior', slot:'s', mp:10, cd:820,  desc:'Heavy cleave. 220% ATK + stun.' },
   groundSlam:   { name:'Ground Slam',    icon:'💢', cls:'warrior', slot:'a', mp:14, cd:1100, desc:'Shockwave AoE all around you.' },
   rush:         { name:'Rush',           icon:'🏃', cls:'warrior', slot:'e', mp:12, cd:1100, desc:'Dash forward, pierce enemies.' },
@@ -850,7 +850,7 @@ const SKILLS = {
   holyShield:   { name:'Holy Shield',    icon:'✨', cls:'warrior', job:'knight',    slot:'c', mp:45, cd:18000, desc:'Ultimate: Invuln + reflect 4s.' },
 
   // ============ ROGUE ============
-  stab:         { name:'Stab',           icon:'🔪', cls:'rogue', slot:'d', mp:0,  cd:210,  desc:'Lightning dagger thrust.' },
+  stab:         { name:'Stab',           icon:'🔪', cls:'rogue', slot:'d', mp:0,  cd:170,  desc:'Lightning dagger thrust — faster than most.' },
   backstab:     { name:'Backstab',       icon:'🩸', cls:'rogue', slot:'s', mp:8,  cd:780,  desc:'2× damage from behind.' },
   throwDagger:  { name:'Throw Dagger',   icon:'🎯', cls:'rogue', slot:'a', mp:6,  cd:400,  desc:'Fast dagger projectile.' },
   smokeDash:    { name:'Smoke Dash',     icon:'💨', cls:'rogue', slot:'e', mp:14, cd:900,  desc:'Blink forward, strike along path.' },
@@ -863,7 +863,7 @@ const SKILLS = {
   sleight:      { name:'Sleight of Hand',icon:'🪄', cls:'rogue', job:'assassin', slot:'c', mp:35, cd:13000, desc:'Ultimate: Steal Lumens & buff self.' },
 
   // ============ MAGE ============
-  magicBolt:    { name:'Magic Bolt',     icon:'✨', cls:'mage', slot:'d', mp:4,  cd:310,  desc:'Arcane projectile.' },
+  magicBolt:    { name:'Magic Bolt',     icon:'✨', cls:'mage', slot:'d', mp:4,  cd:230,  desc:'Arcane projectile — short recast.' },
   fireball:     { name:'Fireball',       icon:'🔥', cls:'mage', slot:'s', mp:14, cd:920,  desc:'Explodes on impact.' },
   iceSpike:     { name:'Ice Spike',      icon:'❄️', cls:'mage', slot:'a', mp:12, cd:700,  desc:'Freezes target on hit.' },
   blink:        { name:'Blink',          icon:'🌀', cls:'mage', slot:'e', mp:10, cd:750,  desc:'Short teleport in facing direction.' },
@@ -3203,7 +3203,8 @@ function castSkill(id) {
   cdMul *= getCdrMult();
   player.skillCooldowns[id] = s.cd * cdMul;
   player.attacking = true;
-  player.attackTimer = 260;
+  // Warrior basic — heavier, longer swing animation; rogue — quick flick
+  player.attackTimer = (id === 'slash') ? 360 : (id === 'stab') ? 180 : 260;
   player.state = 'attack';
   const f = SKILL_FNS[id];
   if (f) f();
@@ -3212,7 +3213,7 @@ function castSkill(id) {
 // ============ Skill implementations ============
 const SKILL_FNS = {
   // Warrior
-  slash: () => performMelee(110, 1.0, { color:'#fff' }),
+  slash: () => performMelee(160, 1.55, { color:'#fff', kb:5, burst:14 }),
   powerStrike: () => { addShake(3); performMelee(140, 2.2, { color:'#ffaa66', kb:6, vy:-2, stun:400, burst:20 }); },
   groundSlam: () => { addShake(6); performAround(100, 1.5, { color:'#ccdddd', kb:4 }); },
   rush: () => { player.rushTimer = 320; player.rushDir = player.facing; player.invulnerable = Math.max(player.invulnerable, 320); addShake(3); },
@@ -3407,7 +3408,7 @@ const SKILL_FNS = {
   arrowShot: () => {
     game.projectiles.push({
       x: player.x + (player.facing > 0 ? player.w : -18), y: player.y + 18,
-      vx: player.facing * 11, vy: 0, w: 18, h: 6, life: 55,
+      vx: player.facing * 18, vy: 0, w: 18, h: 6, life: 45,
       damage: getAtk() * 1.3 + 4, owner: 'player', skill: 'arrow', color: '#ddaa66',
       _enh: player._enh,
     });
