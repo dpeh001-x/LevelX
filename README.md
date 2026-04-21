@@ -17,6 +17,7 @@ Live play URL (once GitHub Pages is enabled): **https://dpeh001-x.github.io/Leve
 | Drop through platform | `↓` + `Space` |
 | Enter portal | `↑` |
 | Dodge roll | `Shift` / `V` |
+| Block / Parry | `Z` |
 | Quick dash | double-tap `←` or `→` |
 | Basic attack | `D` |
 | Skills | `S A E W Q` |

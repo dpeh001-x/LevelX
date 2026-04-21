@@ -651,6 +651,7 @@
           <div class="kb"><span>Enter Portal</span><span><kbd>↑</kbd></span></div>
           <div class="kb"><span>Drop Platform</span><span><kbd>↓</kbd></span></div>
           <div class="kb"><span>Dodge / Avoid</span><span><kbd>Shift</kbd> / <kbd>V</kbd></span></div>
+          <div class="kb"><span>Block / Parry</span><span><kbd>Z</kbd></span></div>
           <div class="kb"><span>Quick Dash</span><span><kbd>←←</kbd> / <kbd>→→</kbd></span></div>
         </div>
         <div class="help-col">
@@ -790,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.4.3';
+const GAME_VERSION = 'v0.4.4';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1859,6 +1860,7 @@ const player = {
   jumpBufferTimer: 0,
   invulnerable:0, rushTimer:0, rushDir:1,
   dodgeTimer:0, dodgeCD:0, dodgeDir:1,
+  blockTimer:0, blockCD:0, parryWindow:0,
   hitStun:0,
   quickDashTimer:0, quickDashDir:1,
   lastTapKey:null, lastTapTime:0,
@@ -2018,6 +2020,11 @@ window.addEventListener('keydown', e => {
   // Dodge roll (Shift or V)
   if ((k === 'shift' || k === 'v') && !game.paused && player.hp > 0 && player.hitStun <= 0 && player.dodgeCD <= 0 && player.dodgeTimer <= 0) {
     startDodge();
+  }
+  // Block / parry (Z) — 500ms block with a 200ms parry window; 2s cooldown
+  if (k === 'z' && !game.paused && player.hp > 0 && player.hitStun <= 0 &&
+      player.blockCD <= 0 && player.blockTimer <= 0) {
+    startBlock();
   }
 
   // Double-tap dash (arrow keys)
@@ -2271,6 +2278,67 @@ function quickDash(dir) {
     state: 'dash', life: 16, maxLife: 16,
     color: 'rgba(180,220,255,0.55)'
   });
+}
+
+function startBlock() {
+  player.blockTimer = 500;     // total block duration
+  player.parryWindow = 200;    // first 200ms = parry
+  player.blockCD = 2000;       // 2s cooldown
+  player.vx *= 0.3;
+  // Shield puff particles
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    game.particles.push({
+      x: player.x + player.w/2 + Math.cos(a) * 12,
+      y: player.y + player.h/2 + Math.sin(a) * 12,
+      vx: Math.cos(a) * 0.8, vy: Math.sin(a) * 0.8,
+      life: 18, color: '#ffdd88', size: 2
+    });
+  }
+}
+
+function triggerParry(source) {
+  // Fully negate damage, brief i-frames, stun attacker, refund some MP
+  player.invulnerable = Math.max(player.invulnerable, 350);
+  player.mp = Math.min(getMaxMp(), player.mp + 15);
+  // End the block window so they can act again
+  player.blockTimer = 0;
+  player.parryWindow = 0;
+  // Visual
+  addShake(5); flash(0.4); addHitStop(80);
+  game.damageNumbers.push({
+    x: player.x + player.w/2 - 20, y: player.y - 6, vy: -2,
+    text: 'PARRY!', life: 50, color: '#ffdd44', size: 18
+  });
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    game.particles.push({
+      x: player.x + player.w/2, y: player.y + player.h/2,
+      vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+      life: 26, color: i % 2 ? '#ffee66' : '#fff', size: 3
+    });
+  }
+  // Stun the attacker if it's a monster
+  if (source && source.currentHp !== undefined) {
+    source.stunTimer = Math.max(source.stunTimer || 0, 900);
+    source.vx = -((source.x + source.w/2) - (player.x + player.w/2)) * 0.05;
+  }
+  showToast('PARRY!', 'legendary');
+}
+
+function triggerBlock() {
+  addShake(2); flash(0.12);
+  game.damageNumbers.push({
+    x: player.x + player.w/2 - 16, y: player.y - 6, vy: -2,
+    text: 'BLOCK', life: 32, color: '#88ccff', size: 14
+  });
+  for (let i = 0; i < 10; i++) {
+    game.particles.push({
+      x: player.x + player.w/2, y: player.y + player.h/2,
+      vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
+      life: 18, color: '#aaddff', size: 2
+    });
+  }
 }
 
 function startDodge() {
@@ -2879,6 +2947,16 @@ function updatePlayer(dt) {
       game.afterImages.push({ x: player.x, y: player.y, facing: player.facing,
         state: player.state, life: 18, maxLife: 18, color: 'rgba(140,220,255,0.55)' });
     }
+  }
+
+  // Block / parry state
+  if (player.blockCD > 0) player.blockCD -= dt;
+  if (player.parryWindow > 0) player.parryWindow -= dt;
+  if (player.blockTimer > 0) {
+    player.blockTimer -= dt;
+    player.state = 'block';
+    // Hold still while blocking
+    player.vx *= 0.5;
   }
 
   // Cooldowns
@@ -4102,6 +4180,11 @@ function updateMonsters(dt) {
 
     // Contact damage
     if (aabb(player, m) && player.invulnerable <= 0) {
+      // Parry window — perfect timing on Z completely negates + stuns
+      if (player.parryWindow > 0) {
+        triggerParry(m);
+        continue;
+      }
       // AGI + equipment dodge chance
       const dodgeC = getEvasion();
       if (dodgeC > 0 && Math.random() < dodgeC) {
@@ -4113,6 +4196,8 @@ function updateMonsters(dt) {
         continue;
       }
       let dmg = Math.max(1, m.atk - getDef() + Math.floor(Math.random() * 4));
+      // Block reduces damage by 70% (outside parry window)
+      if (player.blockTimer > 0) { dmg = Math.max(1, Math.floor(dmg * 0.3)); triggerBlock(); }
       if (player.cls === 'warrior') dmg = Math.max(1, Math.floor(dmg * 0.82));
       // Skill tree: Mana Shield — consume MP first (2 MP : 1 HP)
       if (player.tree.manaShield && player.mp > 0) {
@@ -5025,6 +5110,17 @@ function updateProjectiles(dt) {
     } else {
       // Enemy projectile
       if (aabb(p, player) && player.invulnerable <= 0) {
+        // Parry — absorb + stun nearest monster
+        if (player.parryWindow > 0) {
+          let nearest = null, nd = Infinity;
+          for (const mm of game.monsters) {
+            if (mm.currentHp <= 0) continue;
+            const d = Math.abs(mm.x - player.x);
+            if (d < nd) { nd = d; nearest = mm; }
+          }
+          triggerParry(nearest);
+          game.projectiles.splice(i, 1); continue;
+        }
         const dodgeC = getEvasion();
         if (dodgeC > 0 && Math.random() < dodgeC) {
           game.damageNumbers.push({
@@ -5039,6 +5135,8 @@ function updateProjectiles(dt) {
                         p.skill === 'voidbeam' || p.skill === 'spore' || p.skill === 'mdark';
         const defUsed = isMagic ? getMagicDef() : getDef();
         let dmg = Math.max(1, Math.floor(p.damage) - defUsed);
+        // Block reduces projectile damage by 70%
+        if (player.blockTimer > 0) { dmg = Math.max(1, Math.floor(dmg * 0.3)); triggerBlock(); }
         if (player.cls === 'warrior') dmg = Math.max(1, Math.floor(dmg * 0.82));
         player.hp -= (player._god ? 0 : dmg);
         player.lastHitTime = game.time;
@@ -7001,6 +7099,30 @@ function drawPlayer() {
   const sx = Math.round(player.x - game.camera.x);
   const sy = Math.round(player.y);
   if (player.invulnerable > 0 && player.dodgeTimer <= 0 && Math.floor(player.invulnerable / 60) % 2 === 0) return;
+  // Block / parry shield bubble — drawn under the character so it haloes behind
+  if (player.blockTimer > 0) {
+    const cxb = sx + player.w/2, cyb = sy + player.h/2;
+    const t = game.time * 0.2;
+    const isParry = player.parryWindow > 0;
+    const r = player.w * (isParry ? 1.0 : 0.9) + Math.sin(t) * 1.5;
+    const color = isParry ? '#ffee66' : '#88ccff';
+    // Outer aura
+    ctx.fillStyle = color + '33';
+    ctx.beginPath(); ctx.arc(cxb, cyb, r + 4, 0, Math.PI * 2); ctx.fill();
+    // Ring
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isParry ? 3 : 2;
+    ctx.beginPath(); ctx.arc(cxb, cyb, r, 0, Math.PI * 2); ctx.stroke();
+    // Rotating arc highlights
+    for (let i = 0; i < 4; i++) {
+      const a = t + i * Math.PI / 2;
+      ctx.strokeStyle = color + 'aa';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cxb, cyb, r, a, a + 0.5);
+      ctx.stroke();
+    }
+  }
 
   // Try layered PNG renderer; fall back to procedural pixel art if no asset loaded.
   if (drawLayeredCharacter(sx, sy)) {
