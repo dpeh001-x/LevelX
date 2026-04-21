@@ -1,0 +1,154 @@
+  Pink apron dress over white shirt, curly red hair in pigtails,
+  small potion bottle in hand, welcoming smile.
+
+Barty the Blacksmith:
+  Brown leather smith apron, rolled-up sleeves, sturdy arms,
+  dark bushy beard, bandana, hammer resting on shoulder.
+
+Master Tan:
+  Orange martial arts gi with black belt, tall grey topknot,
+  long wispy white beard, serene closed eyes, arms crossed.
+
+Sage Merla:
+  Flowing deep-purple robe with silver moon-and-star embroidery,
+  long silver hair, wide-brim pointed hat, glowing orb in hands.
+
+Gaffer Pete:
+  Simple green peasant tunic, brown flat cap,
+  weathered kind face, white stubble, a smoking pipe.
+```
+
+---
+
+## 🎁 ITEMS & PICKUPS
+
+### Treasure Chest (28×24 px, 3 tiers)
+```
+SNES 16-bit treasure chest, 28 wide by 24 tall, closed state.
+Rounded wooden lid with metal latch and keyhole. Two metal band straps.
+Front-facing 3/4 view. Rich shading with highlight top and shadow bottom.
+
+Variants:
+- Wood: warm brown planks, iron bands, brass lock.
+- Silver: polished silver metal, blue gems on bands, chrome lock.
+- Gold: bright gold metal, red rubies on bands, ornate engraved lock.
+
+Also provide an open state (lid hinged open, glowing yellow light inside).
+```
+
+### Powerup Orb (26×26 px, 4 rarities)
+```
+SNES 16-bit floating magical powerup orb, 26×26 pixels.
+Spherical crystal core with inner spark, outer swirling aura,
+four small satellite stars orbiting around it.
+
+Rarities:
+- Common: pearl-white
+- Rare: sapphire blue
+- Epic: violet purple
+- Legendary: molten gold-orange with flame wisps.
+
+Transparent background.
+```
+
+### Potions (12×16 px)
+```
+SNES 16-bit potion bottles, 12×16 pixels each, transparent bg.
+Small glass flask with cork, rounded body, liquid inside with bubbles.
+
+- Red Potion (HP): bright crimson liquid
+- Blue Potion (MP): deep cobalt liquid
+- Orange Potion: vibrant orange
+- Elixir: iridescent rainbow swirl with shimmer
+```
+
+### Gold Coin (12×12 px, animated 4 frames)
+```
+SNES 16-bit spinning gold coin, 12×12 per frame, 4 rotation frames:
+- Frame 1: front face (gold circle with "$" or maple leaf)
+- Frame 2: 3/4 rotated (narrower oval)
+- Frame 3: edge-on (thin vertical line)
+- Frame 4: 3/4 back (narrow oval reversed)
+Bright gold with darker edge shading. Transparent bg.
+```
+
+---
+
+## ⚔️ EQUIPMENT ICONS (24×24 inventory icons)
+
+```
+SNES 16-bit RPG inventory icons, 24×24 transparent PNGs,
+top-down/45° angle, rich shading.
+
+Weapons:
+- Wooden Sword: basic brown hilt, dull grey blade.
+- Iron Sword: polished steel, brass guard.
+- Steel Blade: long tapered blade, silver guard.
+- Runed Sabre: curved blade with glowing blue runes.
+- Enchanted Katana: long slim blade, purple mist.
+- Maple Bright Sword: leaf-shaped crystal blade, gold hilt.
+
+Armors:
+- Cloth Tunic: grey linen.
+- Leather Vest: tan leather with straps.
+- Chain Mail: woven silver rings.
+- Plate Armor: polished steel plates.
+- Dragon Scale: green scale vest with spikes.
+- Maple Aegis: white radiant plate with maple leaf emblem.
+
+Accessories:
+- Ring of Might: gold ring with red ruby.
+- Ring of Wisdom: silver ring with blue sapphire.
+- Boots of Swiftness: leather boots with small wings.
+- Amulet of Fortune: gold clover pendant.
+- Shadow Talisman: black jagged jewel.
+- Maple Medallion: round gold medal with maple leaf engraving.
+```
+
+---
+
+## ✨ VFX / EFFECTS (sprite sheets, 4–6 frames each)
+
+```
+SNES 16-bit VFX sprite sheets, each frame 32×32 or 48×48, transparent bg.
+Keep clean animation arcs — each frame readable.
+
+- Slash Effect: white crescent arc, 4 frames (appearing, peak, fading, gone).
+- Magic Bolt: blue orb with trail, 4 frames of motion.
+- Fireball: orange-yellow flame sphere, 6 frames with flicker.
+- Ice Spike: cyan crystal lance, 4 frames forming and releasing.
+- Meteor Impact: fiery ball crashing down with shockwave ring, 6 frames.
+- Level Up: golden light pillar rising around character, 8 frames.
+- Damage Numbers: large 16-bit bitmap numerals (0–9, "!") in white, yellow, red.
+- Portal: swirling purple oval vortex with sparkles, 4 looping frames.
+- Death Explosion: red burst into black smoke, 5 frames.
+```
+
+---
+
+## 🖼️ HUD / UI
+
+```
+SNES 16-bit RPG game UI, transparent PNGs:
+
+- Red HP bar shell (200×14) with rounded ends and white border.
+- Blue MP bar shell (200×14) same style.
+- Yellow-orange EXP bar shell.
+- Skill slot square (52×64) with pixel border, key letter header, MP cost footer,
+  cooldown grey overlay variant.
+- Dialog box: rich wooden frame with gold corner filigree and parchment inside.
+- Menu panel: purple-framed scroll style.
+- Button: small wooden plaque style with beveled edges.
+```
+
+---
+
+## 💡 Usage Tips
+
+1. **Generate at 2× or 4× resolution** then downsample — keeps pixels sharp.
+2. **Specify palette limits** for consistency: `"use only 16 colors from this palette: [list]"`.
+3. **Ask for sprite sheets** when you need multiple frames: `"arrange 4 walk frames horizontally with 4-pixel gaps"`.
+4. **Match shadow direction** across all sprites: lighting always from upper-left.
+5. **Export as PNG with transparency**.
+
+Once generated, drop them into `sprites/` next to the HTML and I can wire them in with `new Image()` loads replacing the canvas drawing code.
