@@ -23,6 +23,8 @@ Live play URL (once GitHub Pages is enabled): **https://dpeh001-x.github.io/Leve
 | Job ultimate / Master signature | `C` / `X` |
 | Interact / Talk | `F` |
 | Inventory | `B` |
+| Skill tree | `K` |
+| Character sheet | `U` |
 | Help panel | `?` |
 | HP / MP potion | `R` / `T` |
 

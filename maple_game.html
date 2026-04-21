@@ -548,7 +548,7 @@
   <div id="top-ui">
     <div id="stats">
       <div>Lv.<span id="level">1</span> <span id="class">Warrior</span>
-        <span style="color:#ffcc55;margin-left:6px;">SP:<span id="skill-points">0</span></span></div>
+        <span style="color:#ffcc55;margin-left:6px;">AP:<span id="skill-points">0</span></span></div>
       <div class="bar"><div class="bar-fill hp-fill" id="hp-bar" style="width:100%"></div><div class="bar-text" id="hp-text">100/100</div></div>
       <div class="bar"><div class="bar-fill mp-fill" id="mp-bar" style="width:100%"></div><div class="bar-text" id="mp-text">50/50</div></div>
       <div class="bar"><div class="bar-fill exp-fill" id="exp-bar" style="width:0%"></div><div class="bar-text" id="exp-text">0/100</div></div>
@@ -608,7 +608,7 @@
       <button class="close-btn" onclick="closeAllModals()">✕</button>
       <h2>Skill Trainer</h2>
       <div style="text-align:center; margin-bottom:8px;">
-        Skill Points: <span class="gold" id="trainer-sp">0</span>
+        Attribute Points: <span class="gold" id="trainer-sp">0</span>
       </div>
       <div id="skills-list"></div>
     </div>
@@ -653,6 +653,8 @@
           <h3>Menus & Items</h3>
           <div class="kb"><span>Interact / Talk</span><span><kbd>F</kbd></span></div>
           <div class="kb"><span>Inventory</span><span><kbd>B</kbd></span></div>
+          <div class="kb"><span>Skill Tree</span><span><kbd>K</kbd></span></div>
+          <div class="kb"><span>Character Sheet</span><span><kbd>U</kbd></span></div>
           <div class="kb"><span>Help Panel</span><span><kbd>?</kbd></span></div>
           <div class="kb"><span>HP Potion</span><span><kbd>R</kbd></span></div>
           <div class="kb"><span>MP Potion</span><span><kbd>T</kbd></span></div>
@@ -688,13 +690,28 @@
       <button class="close-btn" onclick="closeAllModals()">✕</button>
       <h2>✦ Skill Tree ✦</h2>
       <div style="text-align:center; margin-bottom:8px; color:#bbb; font-size:12px;">
-        Spend Skill Points to unlock permanent passive boons.
+        Spend Attribute Points to unlock permanent passive boons.
       </div>
       <div style="text-align:center; margin-bottom:12px;">
-        Class: <b id="tree-class">—</b> · Skill Points: <span class="gold" id="tree-sp">0</span>
+        Class: <b id="tree-class">—</b> · Attribute Points: <span class="gold" id="tree-sp">0</span>
       </div>
       <div id="tree-grid" class="tree-grid"></div>
       <div id="tree-tooltip" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; min-height:40px; font-size:12px;"></div>
+    </div>
+  </div>
+
+  <div id="attributes-modal" class="modal-overlay">
+    <div class="modal" style="position:relative; min-width:640px; max-width:720px;">
+      <button class="close-btn" onclick="closeAllModals()">✕</button>
+      <h2>⚔ Character Sheet</h2>
+      <div style="text-align:center; margin-bottom:8px; color:#bbb; font-size:12px;">
+        Invest Attribute Points into six core stats. Soft cap at 40 — points above give half value.
+      </div>
+      <div style="text-align:center; margin-bottom:12px;">
+        Available: <span class="gold" id="attr-ap">0</span>
+      </div>
+      <div id="attr-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
+      <div id="attr-derived" style="margin-top:12px; padding:10px; background:rgba(0,0,0,0.35); border-radius:6px; font-size:12px; color:#cfd; line-height:1.6;"></div>
     </div>
   </div>
 
@@ -1030,7 +1047,7 @@ for (const m in MASTERS) {
 }
 
 // =========================================================================
-// SKILL TREE — passive nodes unlocked with Skill Points (SP)
+// SKILL TREE — passive nodes unlocked with Attribute Points (AP)
 // 6 nodes per class, 3 tiers, branching prerequisites.
 // =========================================================================
 const SKILL_TREE = {
@@ -1310,6 +1327,7 @@ const monsterTypes = {
   zombie:   { name:'Rotshade',        w:40, h:46, color:'#7a6f88', shell:'#3a2a5a', hp:260, atk:32, exp:160, mesos:75, speed:0.9, jump:4, shoot:'mtoxic',    shootCd:2400 },
   king:     { name:'Gelmonarch',      w:64, h:56, color:'#66ccff', shell:'#3388cc', hp:1200,atk:40, exp:700, mesos:400,speed:0.8, jump:8,  boss:true },
   mushmom:  { name:'Queen Fungara',   w:76, h:86, color:'#f0d8a8', shell:'#aa2244', hp:2500,atk:50, exp:1500,mesos:1000,speed:0.6,jump:6,  boss:true },
+  aetherion:{ name:'Aetherion, the Shardfather', w:160, h:160, color:'#7a5aee', shell:'#c8a8ff', hp:18000,atk:90, exp:12000,mesos:8000,speed:0.5,jump:0, boss:true, superBoss:true },
 };
 
 // =========================================================================
@@ -1595,6 +1613,7 @@ const MAPS = {
     ],
     portals: [
       {x:80,   dest:'frozenPeak', name:'◀ Frozen Peak'},
+      {x:1400, dest:'sanctum',    name:'⬆ Aetherion\'s Sanctum'},
       {x:2720, dest:'ancient',    name:'▶ Elderwood Grove'},
     ],
     spawns: [
@@ -1602,6 +1621,31 @@ const MAPS = {
       {type:'zombie', count:5},
       {type:'orange', count:4},
       {type:'stump',  count:3},
+    ],
+  },
+  sanctum: {
+    name:'Aetherion\'s Sanctum',
+    sky:['#08042a','#1a0844','#3a1a6e'],
+    worldWidth: 2000,
+    levelReq: 25,
+    isBossArena: true,
+    bossType: 'aetherion',
+    sanctum: true,
+    platforms: [
+      {x:0,   y:480, w:2000, h:60, type:'ground'},
+      {x:100, y:380, w:200,  h:12, type:'platform'},
+      {x:1700,y:380, w:200,  h:12, type:'platform'},
+      {x:500, y:320, w:200,  h:12, type:'platform'},
+      {x:1300,y:320, w:200,  h:12, type:'platform'},
+      {x:800, y:240, w:400,  h:12, type:'platform'},
+      {x:280, y:160, w:160,  h:12, type:'platform'},
+      {x:1560,y:160, w:160,  h:12, type:'platform'},
+    ],
+    portals: [
+      {x:80, dest:'lavaCavern', name:'◀ Lava Cavern'},
+    ],
+    spawns: [
+      {type:'aetherion', count:1, boss:true},
     ],
   },
   boss: {
@@ -1659,6 +1703,8 @@ const player = {
   tree: {},          // flags set by tree apply() functions
   attacking:false, attackTimer:0, attackCooldown:0,
   skillCooldowns: {}, skillPoints: 0,
+  // Attributes (AP) — Str/Vit/Agi/Int/Wis/Lck
+  attrs: { str:5, vit:5, agi:5, int:5, wis:5, lck:5 },
   // Buffs: each is a timer (ms remaining)
   buffs: { warCry:0, bloodlust:0, guardian:0, holyShield:0, eagleEye:0, smokeBomb:0, sleight:0, rampage:0 },
   pet: null, // ranger companion
@@ -1694,8 +1740,18 @@ function getEquipBonus(key) {
   }
   return total;
 }
+// Soft-cap diminishing returns — every point over 40 counts for half
+function attrEff(v) {
+  if (v <= 40) return v;
+  return 40 + (v - 40) * 0.5;
+}
+function attr(k) { return (player.attrs && player.attrs[k]) || 0; }
 function getAtk()  {
-  const base = player.baseAtk + player.mods.atk + getEquipBonus('atk');
+  // Mages use INT for damage; melee/ranged use STR (pick the stronger for hybrid classes)
+  const isMagic = player.cls === 'mage';
+  const primary = isMagic ? attr('int') : attr('str');
+  const primaryBonus = Math.floor(attrEff(primary) * 0.8);
+  const base = player.baseAtk + player.mods.atk + getEquipBonus('atk') + primaryBonus;
   let pct = 1 + player.mods.atkPct + (getEquipBonus('atkPct') || 0) + (player.inRage ? 0.3 : 0);
   if (player.buffs.warCry > 0)   pct += 0.5;
   if (player.buffs.bloodlust > 0) pct += 0.4;
@@ -1720,18 +1776,42 @@ function getAtk()  {
   return Math.floor(base * pct);
 }
 function getDef()  {
-  let d = player.baseDef + player.mods.def + getEquipBonus('def');
+  let d = player.baseDef + player.mods.def + getEquipBonus('def') + Math.floor(attrEff(attr('vit')) * 0.5);
   if (player.buffs.guardian > 0) d = Math.floor(d * 1.5 + 40);
   if (player.buffs.holyShield > 0) d += 9999;
   return d;
 }
-function getMaxHp(){ return player.maxHp + player.mods.maxHp + getEquipBonus('hp'); }
-function getMaxMp(){ return player.maxMp + player.mods.maxMp + getEquipBonus('mp'); }
+function getMagicDef() {
+  return Math.floor(attrEff(attr('wis')) * 1.2) + getEquipBonus('def') * 0.5 | 0;
+}
+function getMaxHp(){
+  return player.maxHp + player.mods.maxHp + getEquipBonus('hp') + Math.floor(attrEff(attr('vit')) * 10);
+}
+function getMaxMp(){
+  return player.maxMp + player.mods.maxMp + getEquipBonus('mp') + Math.floor(attrEff(attr('int')) * 5);
+}
 function getCrit() {
-  let c = (player.baseCrit || 5) + player.mods.crit + getEquipBonus('crit');
+  let c = (player.baseCrit || 5) + player.mods.crit + getEquipBonus('crit') + Math.floor(attrEff(attr('lck')) * 0.4);
   if (player.buffs.eagleEye > 0) c += 40;
   if (player.job === 'ninja' && player.buffs.smokeBomb > 0) c += 100;
   return c;
+}
+// Evasion chance (0-1) — AGI-driven, capped at 50%
+function getEvasion() {
+  return Math.min(0.5, attrEff(attr('agi')) * 0.006 + (getEquipBonus('dodgeChance') || 0));
+}
+// Cooldown multiplier — WIS-driven, capped at 40% reduction
+function getCdrMult() {
+  const cdr = Math.min(0.4, attrEff(attr('wis')) * 0.006);
+  return 1 - cdr;
+}
+// Drop/gold rate bonus — LCK-driven
+function getLuckBonus() {
+  return attrEff(attr('lck')) * 0.008;
+}
+// Stun resistance — VIT-driven (0-1, % of stun time ignored)
+function getStunResist() {
+  return Math.min(0.6, attrEff(attr('vit')) * 0.008);
 }
 function getCritDmg(){
   let d = 1.5 + player.mods.critDmg;
@@ -1759,6 +1839,22 @@ window.addEventListener('keydown', e => {
   if (k === 'f') tryInteract();
   if (k === 'arrowup' && !game.paused && player.hp > 0 && player.hitStun <= 0) tryPortal();
   if (k === 'b') toggleModal('inventory-modal', renderInventory);
+  if (k === 'k') {
+    // Skill tree — works anywhere, not just town
+    if (player.cls && !game.paused && player.hp > 0) {
+      openSkillTree();
+    } else if (!player.cls) {
+      showToast('Pick a class first', 'common');
+    }
+  }
+  if (k === 'u') {
+    // Character sheet / attribute allocation
+    if (player.cls && !game.paused && player.hp > 0) {
+      openAttributes();
+    } else if (!player.cls) {
+      showToast('Pick a class first', 'common');
+    }
+  }
   if (k === '?' || k === '/') openHelp();
   if (k === 'escape') closeAllModals();
   // Quick potion use
@@ -1800,6 +1896,17 @@ function applyClass(clsId) {
   player.hp = c.stats.hp;
   player.mp = c.stats.mp;
   player.skillCooldowns = {};
+  // Starting attribute spread per class
+  const spread = {
+    warrior: { str:12, vit:10, agi:5,  int:3,  wis:4, lck:6  },
+    rogue:   { str:7,  vit:5,  agi:12, int:4,  wis:5, lck:10 },
+    mage:    { str:3,  vit:5,  agi:5,  int:12, wis:10, lck:5 },
+    archer:  { str:8,  vit:6,  agi:10, int:4,  wis:5, lck:8  },
+  };
+  player.attrs = { ...(spread[clsId] || { str:5,vit:5,agi:5,int:5,wis:5,lck:5 }) };
+  // Sync HP/MP to reflect VIT/INT
+  player.hp = getMaxHp();
+  player.mp = getMaxMp();
   // Archer class perk: triple jump by default
   if (clsId === 'archer') {
     player.mods.extraJumps = Math.max(player.mods.extraJumps || 0, 1);
@@ -2370,8 +2477,12 @@ function spawnMonster(x, y, type, isBoss, isMiniBoss) {
   });
   // Boss intro cue
   if (isBoss) {
-    const bossNames = { king:'Gelmonarch', mushmom:'Queen Fungara' };
-    const subs = { king:'Sovereign of the Gelwater Grotto', mushmom:'Matriarch of the Hollow' };
+    const bossNames = { king:'Gelmonarch', mushmom:'Queen Fungara', aetherion:'Aetherion, the Shardfather' };
+    const subs = {
+      king:'Sovereign of the Gelwater Grotto',
+      mushmom:'Matriarch of the Hollow',
+      aetherion:'Warden of the Broken Sanctum — brace yourself',
+    };
     spawnBossIntro(bossNames[type] || t.name, subs[type] || 'ready your blade');
   }
   if (isMiniBoss) {
@@ -2922,6 +3033,8 @@ function castSkill(id) {
   let cdMul = player.cls === 'mage' ? 0.70 : 1;
   // Skill tree: Quick Draw — archer arrow-shot CD reduction
   if (player.tree.arrowCdMul && id === 'arrowShot') cdMul *= player.tree.arrowCdMul;
+  // WIS attribute — up to 40% cooldown reduction
+  cdMul *= getCdrMult();
   player.skillCooldowns[id] = s.cd * cdMul;
   player.attacking = true;
   player.attackTimer = 260;
@@ -3822,8 +3935,8 @@ function updateMonsters(dt) {
 
     // Contact damage
     if (aabb(player, m) && player.invulnerable <= 0) {
-      // Equipment dodge chance
-      const dodgeC = getEquipBonus('dodgeChance');
+      // AGI + equipment dodge chance
+      const dodgeC = getEvasion();
       if (dodgeC > 0 && Math.random() < dodgeC) {
         game.damageNumbers.push({
           x: player.x + 14, y: player.y, vy: -2,
@@ -3844,7 +3957,7 @@ function updateMonsters(dt) {
       player.hp -= dmg;
       player.lastHitTime = game.time;
       // Skill tree: Unstoppable — stun immune
-      player.hitStun = player.tree.stunImmune ? 0 : 140;
+      player.hitStun = player.tree.stunImmune ? 0 : Math.floor(140 * (1 - getStunResist()));
       player.invulnerable = 500;
       // Cancel voluntary actions
       player.attacking = false;
@@ -3904,6 +4017,168 @@ function bossAI(m, dt, distToPlayer) {
         m.patternState = 'idle';
         m.patternTimer = 0;
       }
+    }
+  } else if (m.type === 'aetherion') {
+    // ==== AETHERION — 3-phase super boss ====
+    const hpPct = m.currentHp / m.maxHp;
+    const phase = hpPct > 0.66 ? 1 : hpPct > 0.33 ? 2 : 3;
+    if (m.phase !== phase) {
+      m.phase = phase;
+      m.patternTimer = 0;
+      m.patternState = 'idle';
+      if (phase === 2) {
+        showToast('⚡ AETHERION SHIFTS — reality fractures', 'legendary');
+        flash(0.5); addShake(10);
+      } else if (phase === 3) {
+        showToast('💀 AETHERION UNLEASHED — final form!', 'legendary');
+        flash(0.7); addShake(16); addHitStop(150);
+      }
+    }
+    // Hover in place with subtle drift
+    m.vy = Math.sin(game.time * 0.04) * 0.6;
+    // Gentle horizontal drift toward player
+    const dx = (player.x + player.w/2) - (m.x + m.w/2);
+    m.vx += Math.sign(dx) * 0.04;
+    if (Math.abs(m.vx) > 1.5) m.vx = Math.sign(m.vx) * 1.5;
+
+    const cycleBase = phase === 1 ? 2400 : phase === 2 ? 1700 : 1100;
+
+    if (m.patternState === 'idle') {
+      if (m.patternTimer > cycleBase) {
+        // Pick next pattern weighted by phase
+        const roll = Math.random();
+        if (phase === 1) {
+          m.patternState = roll < 0.55 ? 'volley' : roll < 0.85 ? 'tear' : 'rain';
+        } else if (phase === 2) {
+          m.patternState = roll < 0.35 ? 'volley' : roll < 0.6 ? 'tear' : roll < 0.8 ? 'beam' : 'teleport';
+        } else {
+          m.patternState = roll < 0.25 ? 'volley' : roll < 0.5 ? 'beam' : roll < 0.75 ? 'teleport' : 'rain';
+        }
+        m.patternTimer = 0;
+      }
+    } else if (m.patternState === 'volley') {
+      // Shard Volley — fire 6–8 projectiles in a fan
+      const count = phase === 1 ? 6 : phase === 2 ? 8 : 10;
+      if (m.patternTimer === 0 || m.patternTimer < 0) {/* init */}
+      if (m.patternTimer > 400 && !m._volleyFired) {
+        m._volleyFired = true;
+        for (let i = 0; i < count; i++) {
+          const ang = -Math.PI/2 + (i - (count - 1) / 2) * 0.18;
+          game.projectiles.push({
+            x: m.x + m.w/2, y: m.y + m.h/2,
+            vx: Math.cos(ang) * 5 + m.facing * 0.5,
+            vy: Math.sin(ang) * 5,
+            w: 14, h: 14, life: 120,
+            damage: m.atk * 0.6, owner:'enemy', skill:'shard',
+            color:'#c8a8ff',
+          });
+        }
+        addShake(4);
+      }
+      if (m.patternTimer > 900) { m.patternState = 'idle'; m.patternTimer = 0; m._volleyFired = false; }
+    } else if (m.patternState === 'tear') {
+      // Dimensional Tear — spawn 2–3 static damage zones along the ground
+      if (m.patternTimer > 500 && !m._tearFired) {
+        m._tearFired = true;
+        const zones = phase === 3 ? 4 : 2;
+        for (let i = 0; i < zones; i++) {
+          const tx = 200 + Math.random() * 1600;
+          game.hazards.push({
+            x: tx - 40, y: 460, w: 80, h: 30, type:'void_tear',
+            life: 3000, maxLife: 3000, cx: tx, atk: m.atk * 0.5,
+          });
+        }
+        showToast('🌀 Reality tears open!', 'epic');
+        flash(0.2); addShake(3);
+      }
+      if (m.patternTimer > 1000) { m.patternState = 'idle'; m.patternTimer = 0; m._tearFired = false; }
+    } else if (m.patternState === 'rain') {
+      // Crystal Rain — meteor-like shards falling
+      if (m.patternTimer > 300) {
+        for (let i = 0; i < 3; i++) {
+          const tx = Math.random() * game.mapData.worldWidth;
+          game.projectiles.push({
+            x: tx, y: -10,
+            vx: (Math.random() - 0.5) * 1, vy: 6 + Math.random() * 2,
+            w: 16, h: 16, life: 90,
+            damage: m.atk * 0.45, owner:'enemy', skill:'shard',
+            color:'#8866ee',
+          });
+        }
+        m.patternTimer -= 120; // rapid fire for duration
+      }
+      if (m.patternTimer > 1500 || m._rainTicks > 12) { m.patternState = 'idle'; m.patternTimer = 0; m._rainTicks = 0; }
+      m._rainTicks = (m._rainTicks || 0) + 1;
+    } else if (m.patternState === 'beam') {
+      // Void Beam — charge, then horizontal sweeping beam
+      if (m.patternTimer < 700) {
+        // Charge particles
+        if (game.time % 3 === 0) {
+          for (let i = 0; i < 3; i++) {
+            const a = Math.random() * Math.PI * 2;
+            game.particles.push({
+              x: m.x + m.w/2 + Math.cos(a) * 60,
+              y: m.y + m.h/2 + Math.sin(a) * 60,
+              vx: -Math.cos(a) * 2, vy: -Math.sin(a) * 2,
+              life: 30, color: '#ff44aa', size: 3
+            });
+          }
+        }
+      } else if (!m._beamFired) {
+        m._beamFired = true;
+        // Fire beam as fast horizontal projectiles in both directions
+        for (let dir of [-1, 1]) {
+          game.projectiles.push({
+            x: m.x + m.w/2, y: m.y + m.h/2,
+            vx: dir * 16, vy: 0,
+            w: 26, h: 20, life: 180,
+            damage: m.atk * 1.1, owner:'enemy', skill:'voidbeam',
+            color:'#ff44ff', pierce: true,
+          });
+        }
+        addShake(12); flash(0.35);
+      }
+      if (m.patternTimer > 1300) { m.patternState = 'idle'; m.patternTimer = 0; m._beamFired = false; }
+    } else if (m.patternState === 'teleport') {
+      // Vanish + reappear at random spot
+      if (m.patternTimer > 200 && !m._teleported) {
+        m._teleported = true;
+        // Poof out
+        for (let i = 0; i < 40; i++) {
+          const a = Math.random() * Math.PI * 2;
+          game.particles.push({
+            x: m.x + m.w/2, y: m.y + m.h/2,
+            vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+            life: 30, color: '#aa44ff', size: 3 + Math.random() * 2
+          });
+        }
+        // New position somewhere above ground, avoiding player
+        let nx;
+        do { nx = 200 + Math.random() * (game.mapData.worldWidth - 400); }
+        while (Math.abs(nx - player.x) < 300);
+        m.x = nx;
+        m.y = 200 + Math.random() * 100;
+        m.vx = 0; m.vy = 0;
+        // Poof in
+        for (let i = 0; i < 40; i++) {
+          const a = Math.random() * Math.PI * 2;
+          game.particles.push({
+            x: m.x + m.w/2, y: m.y + m.h/2,
+            vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+            life: 30, color: '#aa44ff', size: 3 + Math.random() * 2
+          });
+        }
+        addShake(5);
+        // Phase 3 spawns minions on teleport
+        if (phase === 3 && !m._summonedThisPhase) {
+          m._summonedThisPhase = true;
+          for (let i = 0; i < 3; i++) {
+            spawnMonster(m.x + (i - 1) * 80, m.y + 40, 'zombie', false);
+          }
+          showToast('Shadows answer the call!', 'epic');
+        }
+      }
+      if (m.patternTimer > 500) { m.patternState = 'idle'; m.patternTimer = 0; m._teleported = false; }
     }
   } else if (m.type === 'mushmom') {
     // Mushmom: 3 patterns
@@ -4191,10 +4466,11 @@ function killMonster(m) {
       type:'potion_mp', value: 20, life:400 });
   }
 
-  // Item drops
+  // Item drops — LCK attribute boosts drop rate
+  const luck = getLuckBonus();
   const itemRoll = Math.random();
   const tier = m.isBoss ? 2 : (m.isElite ? 1 : 0);
-  const dropChance = tier === 2 ? 1.0 : tier === 1 ? 0.5 : 0.14;
+  const dropChance = (tier === 2 ? 1.0 : tier === 1 ? 0.5 : 0.14) * (1 + luck);
   if (itemRoll < dropChance) {
     const item = rollItemDrop(tier);
     if (item) {
@@ -4206,7 +4482,7 @@ function killMonster(m) {
   }
   // Random chance for an orb to drop from kills (not bosses)
   if (tier !== 2) {
-    const orbChance = tier === 1 ? 0.12 : 0.02;
+    const orbChance = (tier === 1 ? 0.12 : 0.02) * (1 + luck);
     if (Math.random() < orbChance) {
       const r = Math.random();
       const rarity = r < 0.02 ? 'legendary' : r < 0.15 ? 'epic' : r < 0.5 ? 'rare' : 'common';
@@ -4225,6 +4501,11 @@ function killMonster(m) {
         });
       }
     }
+  }
+
+  // Super-boss cinematic death + legendary reward pile
+  if (m.type === 'aetherion' || m.superBoss) {
+    triggerSuperBossDeath(m);
   }
 
   // Level check
@@ -4306,6 +4587,90 @@ function killMonster(m) {
         }
       }
     }, 1200 + Math.random() * 1400);
+  }
+}
+
+function triggerSuperBossDeath(m) {
+  // Cinematic — shattering crystal, screen flash, slo-mo feel
+  flash(0.8);
+  addShake(24);
+
+  // Massive particle burst (prismatic shards)
+  const palette = ['#ffffff','#c8a8ff','#ff88dd','#8ad8ff','#ffd766','#b090ff'];
+  for (let i = 0; i < 160; i++) {
+    const col = palette[i % palette.length];
+    game.particles.push({
+      x: m.x + m.w/2, y: m.y + m.h/2,
+      vx: (Math.random() - 0.5) * 18,
+      vy: -Math.random() * 16 - 2,
+      life: 90 + Math.random() * 60,
+      color: col, size: 3 + Math.random() * 4, gravity: 0.12,
+    });
+  }
+  // Slower outward shockwave
+  for (let i = 0; i < 48; i++) {
+    const ang = (i / 48) * Math.PI * 2;
+    game.particles.push({
+      x: m.x + m.w/2, y: m.y + m.h/2,
+      vx: Math.cos(ang) * 12, vy: Math.sin(ang) * 12,
+      life: 70, color: '#e8d8ff', size: 5,
+    });
+  }
+
+  // Legendary loot pile — 4 guaranteed legendaries + 2 high tier
+  for (let i = 0; i < 4; i++) {
+    const leg = rollItemDrop(2);
+    if (leg) {
+      leg.rarity = 'legendary';
+      game.drops.push({
+        x: m.x + m.w/2 + (Math.random()-0.5)*120,
+        y: m.y + m.h/2, vy: -6 - Math.random()*5,
+        type:'item', item: leg, life: 1800,
+      });
+    }
+  }
+  for (let i = 0; i < 2; i++) {
+    const extra = rollItemDrop(2);
+    if (extra) {
+      game.drops.push({
+        x: m.x + m.w/2 + (Math.random()-0.5)*160,
+        y: m.y + m.h/2, vy: -4 - Math.random()*4,
+        type:'item', item: extra, life: 1800,
+      });
+    }
+  }
+
+  // Massive Lumen pile (12 gold piles)
+  for (let i = 0; i < 12; i++) {
+    game.drops.push({
+      x: m.x + m.w/2 + (Math.random()-0.5)*160,
+      y: m.y + m.h/2,
+      vy: -Math.random() * 8 - 3,
+      type:'meso', value: 1200 + Math.floor(Math.random()*800),
+      life: 1800,
+    });
+  }
+
+  // Three legendary powerup orbs
+  for (let i = 0; i < 3; i++) {
+    spawnPowerupOrb(
+      m.x + m.w/2 + (i - 1) * 70,
+      m.y + m.h/2 - 10,
+      'legendary'
+    );
+  }
+
+  // Huge EXP bonus on top of normal
+  player.exp += Math.floor(m.exp * 0.5);
+
+  // Dramatic toast — staggered messages
+  showToast('THE SHARDFATHER FALLS!', 'legendary');
+  setTimeout(() => showToast('The Sanctum trembles...', 'epic'), 900);
+  setTimeout(() => showToast(`+${(m.mesos * 0.5)|0} Legendary Lumen rain!`, 'legendary'), 1800);
+
+  // Clear any lingering void tears
+  if (game.hazards) {
+    game.hazards = game.hazards.filter(h => h.type !== 'void_tear');
   }
 }
 
@@ -4491,7 +4856,7 @@ function updateProjectiles(dt) {
     } else {
       // Enemy projectile
       if (aabb(p, player) && player.invulnerable <= 0) {
-        const dodgeC = getEquipBonus('dodgeChance');
+        const dodgeC = getEvasion();
         if (dodgeC > 0 && Math.random() < dodgeC) {
           game.damageNumbers.push({
             x: player.x + 14, y: player.y, vy: -2,
@@ -4499,11 +4864,17 @@ function updateProjectiles(dt) {
           });
           game.projectiles.splice(i, 1); continue;
         }
-        let dmg = Math.max(1, Math.floor(p.damage) - getDef());
+        // Magic-type projectiles use magic defense
+        const isMagic = p.skill === 'bolt' || p.skill === 'fire' || p.skill === 'ice' ||
+                        p.skill === 'lightning' || p.skill === 'void' || p.skill === 'shard' ||
+                        p.skill === 'voidbeam' || p.skill === 'spore' || p.skill === 'mdark';
+        const defUsed = isMagic ? getMagicDef() : getDef();
+        let dmg = Math.max(1, Math.floor(p.damage) - defUsed);
         if (player.cls === 'warrior') dmg = Math.max(1, Math.floor(dmg * 0.82));
         player.hp -= dmg;
         player.lastHitTime = game.time;
-        player.hitStun = 1500;
+        const stunMul = 1 - getStunResist();
+        player.hitStun = 1500 * stunMul;
         player.invulnerable = 1500;
         player.attacking = false;
         player.attackTimer = 0;
@@ -4633,7 +5004,7 @@ function openNPC(npc) {
     opts.push({ t:'Sell Items', cb:() => { closeDialog(); openShop('sell'); } });
     opts.push({ t:'Enhance Gear ✦', cb:() => { closeDialog(); openEnhancementModal(); } });
   } else if (npc.role === 'skills') {
-    text = `You have ${player.skillPoints} skill point${player.skillPoints === 1 ? '' : 's'}. Train hard and become stronger.`;
+    text = `You have ${player.skillPoints} attribute point${player.skillPoints === 1 ? '' : 's'}. Spend them at the character sheet (U) or skill tree (K).`;
     opts.push({ t:'Skill Tree ✦', cb:() => { closeDialog(); openSkillTree(); } });
     opts.push({ t:'Train Stats', cb:() => { closeDialog(); openSkillsModal(); } });
   } else if (npc.role === 'sage') {
@@ -4933,7 +5304,7 @@ function renderSkillTree() {
         <div class="n-tier-dot"></div>
         <div class="n-icon">${node.icon}</div>
         <div class="n-name">${node.name}</div>
-        <div class="n-cost">${unlocked ? '✓ Learned' : node.cost + ' SP'}</div>
+        <div class="n-cost">${unlocked ? '✓ Learned' : node.cost + ' AP'}</div>
       `;
       div.onmouseenter = () => {
         const pre = node.prereq ? nodes.find(n => n.id === node.prereq) : null;
@@ -4941,7 +5312,7 @@ function renderSkillTree() {
           <div style="color:#ffcc44;font-weight:bold;margin-bottom:2px;">${node.icon} ${node.name}</div>
           <div style="color:#ddd;font-size:12px;margin-bottom:4px;">${node.desc}</div>
           ${pre ? `<div style="font-size:11px;color:#aaa;">Requires: <b>${pre.name}</b></div>` : ''}
-          <div style="font-size:11px;color:#ffcc66;">Cost: ${node.cost} SP · Tier ${node.tier}</div>
+          <div style="font-size:11px;color:#ffcc66;">Cost: ${node.cost} AP · Tier ${node.tier}</div>
         `;
       };
       div.onclick = () => {
@@ -4960,6 +5331,78 @@ function openSkillTree() {
   game.paused = true;
 }
 
+const ATTR_DEFS = [
+  { key:'str', name:'Strength (STR)',     icon:'⚔',  color:'#ff7a5a', desc:'+0.8 ATK per point (melee & ranged)' },
+  { key:'vit', name:'Vitality (VIT)',     icon:'❤',  color:'#ff5a7a', desc:'+10 Max HP · +0.5 DEF · stun resist' },
+  { key:'agi', name:'Agility (AGI)',      icon:'➹',  color:'#7adeff', desc:'Evasion (dodge) · initiative' },
+  { key:'int', name:'Intelligence (INT)', icon:'✦',  color:'#c8a8ff', desc:'+5 Max MP · +0.8 ATK for mages' },
+  { key:'wis', name:'Wisdom (WIS)',       icon:'✺',  color:'#88ffcc', desc:'Cooldown reduction · magic defense' },
+  { key:'lck', name:'Luck (LCK)',         icon:'✧',  color:'#ffd766', desc:'+0.4 Crit · drop & gold bonus' },
+];
+
+function renderAttributes() {
+  document.getElementById('attr-ap').textContent = player.skillPoints;
+  const grid = document.getElementById('attr-grid');
+  grid.innerHTML = '';
+  const canSpend = player.skillPoints > 0;
+  for (const A of ATTR_DEFS) {
+    const v = attr(A.key);
+    const eff = Math.floor(attrEff(v) * 10) / 10;
+    const softCap = v > 40 ? `<span style="color:#ffaa44;">(soft-cap)</span>` : '';
+    const row = document.createElement('div');
+    row.style.cssText = `border:1px solid ${A.color}55; background:rgba(0,0,0,0.35); border-radius:6px; padding:10px;`;
+    row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <div style="color:${A.color}; font-weight:bold; font-size:14px;">${A.icon} ${A.name}</div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span style="font-size:18px; font-weight:bold; color:${A.color}; min-width:30px; text-align:right;">${v}</span>
+          <button data-attr="${A.key}" class="attr-plus" ${canSpend ? '' : 'disabled'}
+            style="width:26px; height:26px; border-radius:4px; background:${canSpend ? '#4a6a3a' : '#3a3a3a'};
+            color:${canSpend ? '#ccffaa' : '#666'}; border:1px solid ${canSpend ? '#7abf5a' : '#555'};
+            cursor:${canSpend ? 'pointer' : 'not-allowed'}; font-weight:bold;">+</button>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#aaa;">${A.desc}</div>
+      <div style="font-size:10px; color:#ffcc66; margin-top:2px;">Effective: ${eff} ${softCap}</div>
+    `;
+    grid.appendChild(row);
+  }
+  grid.querySelectorAll('.attr-plus').forEach(b => {
+    b.onclick = () => {
+      const k = b.dataset.attr;
+      if (player.skillPoints < 1) return;
+      player.skillPoints -= 1;
+      player.attrs[k] = (player.attrs[k] || 0) + 1;
+      // Refresh current HP/MP to new max if it went up
+      player.hp = Math.min(player.hp + (k === 'vit' ? 10 : 0), getMaxHp());
+      player.mp = Math.min(player.mp + (k === 'int' ? 5 : 0),  getMaxMp());
+      renderAttributes();
+    };
+  });
+  // Derived stats panel
+  const d = document.getElementById('attr-derived');
+  d.innerHTML = `
+    <div style="color:#ffcc66; font-weight:bold; margin-bottom:6px;">Derived Stats</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;">
+      <div>Max HP: <b style="color:#ff88aa;">${getMaxHp()}</b></div>
+      <div>Max MP: <b style="color:#88ccff;">${getMaxMp()}</b></div>
+      <div>ATK: <b style="color:#ffaa66;">${getAtk()}</b></div>
+      <div>DEF: <b style="color:#aaddff;">${getDef()}</b></div>
+      <div>M.DEF: <b style="color:#c8a8ff;">${getMagicDef()}</b></div>
+      <div>Crit: <b style="color:#ffdd66;">${getCrit()}%</b></div>
+      <div>Evasion: <b style="color:#88ffcc;">${(getEvasion()*100).toFixed(1)}%</b></div>
+      <div>CDR: <b style="color:#aaffaa;">${((1 - getCdrMult())*100).toFixed(1)}%</b></div>
+      <div>Luck: <b style="color:#ffd766;">+${(getLuckBonus()*100).toFixed(1)}%</b></div>
+    </div>
+  `;
+}
+
+function openAttributes() {
+  renderAttributes();
+  document.getElementById('attributes-modal').style.display = 'flex';
+  game.paused = true;
+}
+
 function openSkillsModal() {
   const list = document.getElementById('skills-list');
   list.innerHTML = '';
@@ -4968,11 +5411,11 @@ function openSkillsModal() {
   const kit = skillsForClass(player.cls, player.job);
   const header = document.createElement('div');
   header.innerHTML = `<div style="text-align:center;margin-bottom:10px;color:#ffcc66;">Class: <b>${cname}</b></div>
-    <div style="font-size:12px;color:#bbb;text-align:center;margin-bottom:10px;">Spend 1 SP to boost ATK by 1 · 2 SP to boost DEF by 1</div>
+    <div style="font-size:12px;color:#bbb;text-align:center;margin-bottom:10px;">Spend 1 AP to boost ATK by 1 · 2 AP to boost DEF by 1</div>
     <div style="display:flex;gap:10px;justify-content:center;margin-bottom:12px;">
-      <button id="tr-atk" class="close-btn" style="position:relative;background:#553;padding:6px 12px;border-radius:4px;border:1px solid #886;">+1 ATK (1 SP)</button>
-      <button id="tr-def" class="close-btn" style="position:relative;background:#355;padding:6px 12px;border-radius:4px;border:1px solid #688;">+1 DEF (2 SP)</button>
-      <button id="tr-maxhp" class="close-btn" style="position:relative;background:#533;padding:6px 12px;border-radius:4px;border:1px solid #966;">+10 HP (1 SP)</button>
+      <button id="tr-atk" class="close-btn" style="position:relative;background:#553;padding:6px 12px;border-radius:4px;border:1px solid #886;">+1 ATK (1 AP)</button>
+      <button id="tr-def" class="close-btn" style="position:relative;background:#355;padding:6px 12px;border-radius:4px;border:1px solid #688;">+1 DEF (2 AP)</button>
+      <button id="tr-maxhp" class="close-btn" style="position:relative;background:#533;padding:6px 12px;border-radius:4px;border:1px solid #966;">+10 HP (1 AP)</button>
     </div>
     <div style="font-size:12px;color:#ffaa88;margin:6px 0;">Your Skills</div>`;
   list.appendChild(header);
@@ -5187,7 +5630,7 @@ function closeAllModals() {
   const cs = document.getElementById('class-select-modal');
   const av = document.getElementById('advancement-modal');
   if (cs.style.display === 'flex' || av.style.display === 'flex') return;
-  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal']) {
+  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal','attributes-modal']) {
     document.getElementById(id).style.display = 'none';
   }
   document.getElementById('dialog').style.display = 'none';
@@ -5244,6 +5687,13 @@ function drawBackground() {
   const [a,b,c] = game.mapData.sky;
   grad.addColorStop(0, a); grad.addColorStop(0.6, b); grad.addColorStop(1, c);
   ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  // Sanctum cosmic background — skip normal mountains/clouds/trees
+  if (game.mapData.sanctum) {
+    drawSanctumCosmos();
+    if (game.mapData.isBossArena) drawBossDecor();
+    return;
+  }
 
   // Distant mountains
   ctx.fillStyle = '#7a8a9e';
@@ -5451,6 +5901,100 @@ function drawTownDecor() {
     ctx.beginPath();
     ctx.arc(sx + b.w - 22 + Math.sin(smokeT + 2) * 4, wallTop - 56 + Math.cos(smokeT + 2) * 2, 6, 0, Math.PI * 2);
     ctx.fill();
+  }
+}
+
+function drawSanctumCosmos() {
+  // Starfield — three parallax layers
+  const t = game.time * 0.002;
+  const layers = [
+    { count: 60, speed: 0.05, size: 1, alpha: 0.5, hue: '#ffffff' },
+    { count: 40, speed: 0.15, size: 2, alpha: 0.75, hue: '#e8d8ff' },
+    { count: 20, speed: 0.3,  size: 3, alpha: 1.0,  hue: '#fff0c0' },
+  ];
+  for (const L of layers) {
+    for (let i = 0; i < L.count; i++) {
+      const seed = i * 137.508;
+      const sx = ((seed * 23 % W) + W - game.camera.x * L.speed) % W;
+      const sy = (seed * 41) % (H - 60);
+      const tw = 0.6 + 0.4 * Math.sin(t * 2 + i);
+      ctx.fillStyle = L.hue;
+      ctx.globalAlpha = L.alpha * tw;
+      ctx.fillRect(sx, sy, L.size, L.size);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Nebula clouds (soft radial gradients)
+  const nebulae = [
+    { x: 200, y: 140, r: 160, col1: 'rgba(180,100,220,0.25)', col2: 'rgba(180,100,220,0)' },
+    { x: 900, y: 100, r: 200, col1: 'rgba(100,180,255,0.22)', col2: 'rgba(100,180,255,0)' },
+    { x: 1500,y: 200, r: 180, col1: 'rgba(255,140,200,0.22)', col2: 'rgba(255,140,200,0)' },
+  ];
+  for (const n of nebulae) {
+    const sx = n.x - game.camera.x * 0.2;
+    const g = ctx.createRadialGradient(sx, n.y, 0, sx, n.y, n.r);
+    g.addColorStop(0, n.col1); g.addColorStop(1, n.col2);
+    ctx.fillStyle = g; ctx.fillRect(sx - n.r, n.y - n.r, n.r * 2, n.r * 2);
+  }
+
+  // Floating crystal shards (decorative — drift + rotate)
+  for (let i = 0; i < 14; i++) {
+    const seed = i * 51.7;
+    const wx = (seed * 53) % 1800 + 80;
+    const baseY = (seed * 31) % 340 + 40;
+    const bob = Math.sin(t * 3 + i) * 8;
+    const rot = t * (0.3 + (i % 3) * 0.2) + i;
+    const sx = wx - game.camera.x * 0.45;
+    if (sx < -40 || sx > W + 40) continue;
+    const sy = baseY + bob;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(rot);
+    // Shard glow
+    ctx.fillStyle = 'rgba(200,160,255,0.25)';
+    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+    // Shard body (diamond)
+    ctx.fillStyle = '#b090ff';
+    ctx.beginPath();
+    ctx.moveTo(0, -8); ctx.lineTo(5, 0); ctx.lineTo(0, 8); ctx.lineTo(-5, 0); ctx.closePath(); ctx.fill();
+    // Shard highlight
+    ctx.fillStyle = '#e8d8ff';
+    ctx.beginPath();
+    ctx.moveTo(0, -8); ctx.lineTo(3, 0); ctx.lineTo(0, 3); ctx.lineTo(-2, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // Ground haze (purple mist near floor)
+  const hazeGrad = ctx.createLinearGradient(0, 380, 0, 480);
+  hazeGrad.addColorStop(0, 'rgba(90,40,140,0)');
+  hazeGrad.addColorStop(1, 'rgba(140,80,200,0.35)');
+  ctx.fillStyle = hazeGrad; ctx.fillRect(0, 380, W, 100);
+
+  // Altar pillars (boss arena pillars with crystal caps — sanctum-themed)
+  const pillars = [220, 620, 1380, 1780];
+  for (const px of pillars) {
+    if (px > game.mapData.worldWidth) continue;
+    const sx = px - game.camera.x;
+    if (sx < -40 || sx > W + 40) continue;
+    // Pillar shaft
+    ctx.fillStyle = '#1a0a3a';
+    ctx.fillRect(sx - 14, 180, 28, 300);
+    ctx.fillStyle = '#2a1a5a';
+    ctx.fillRect(sx - 14, 180, 4, 300);
+    // Pillar base/cap
+    ctx.fillStyle = '#3a2a6a';
+    ctx.fillRect(sx - 20, 170, 40, 14);
+    ctx.fillRect(sx - 20, 470, 40, 14);
+    // Floating crystal orb on top
+    const orbBob = Math.sin(t * 4 + px * 0.01) * 4;
+    const orbY = 150 + orbBob;
+    ctx.fillStyle = 'rgba(200,120,255,0.4)';
+    ctx.beginPath(); ctx.arc(sx, orbY, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c090ff';
+    ctx.beginPath(); ctx.arc(sx, orbY, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(sx - 2, orbY - 2, 3, 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -6530,6 +7074,7 @@ function drawMonster(m) {
   else if (m.type === 'zombie') drawZombie(m, sx, sy);
   else if (m.type === 'king') drawKingSlime(m, sx, sy);
   else if (m.type === 'mushmom') drawMushmom(m, sx, sy);
+  else if (m.type === 'aetherion') drawAetherion(m, sx, sy);
 
   // Burn effect
   if (m.burnTimer > 0) {
@@ -7190,6 +7735,154 @@ function drawKingSlime(m, sx, sy) {
   px(cx + 4, cy + 1, 2, 2, '#ffffff');
 }
 
+function drawAetherion(m, sx, sy) {
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
+  const cx = sx + m.w/2, cy = sy + m.h/2;
+  const t = game.time;
+  const phase = m.phase || 1;
+  // Phase colors shift
+  const coreCol = phase === 1 ? '#c8a8ff' : phase === 2 ? '#ff88dd' : '#ff4466';
+  const shellCol = phase === 1 ? '#7a5aee' : phase === 2 ? '#aa44ee' : '#ff2266';
+  const darkCol = phase === 1 ? '#3a1a6e' : phase === 2 ? '#4a1a5a' : '#6a0a2a';
+  const glowCol = phase === 1 ? '#aa88ff' : phase === 2 ? '#ff66aa' : '#ff2288';
+
+  // Outer aura (pulsing)
+  const pulse = Math.sin(t * 0.05) * 8;
+  const auraR = m.w * 0.8 + pulse;
+  const g = ctx.createRadialGradient(cx, cy, m.w/3, cx, cy, auraR);
+  g.addColorStop(0, glowCol + 'aa');
+  g.addColorStop(0.6, glowCol + '44');
+  g.addColorStop(1, glowCol + '00');
+  ctx.fillStyle = g;
+  ctx.fillRect(sx - 40, sy - 40, m.w + 80, m.h + 80);
+
+  // Orbiting crystal shards (4-8 depending on phase)
+  const shardCount = phase === 1 ? 5 : phase === 2 ? 7 : 9;
+  for (let i = 0; i < shardCount; i++) {
+    const angle = t * 0.03 + i * (Math.PI * 2 / shardCount);
+    const r = m.w * 0.55;
+    const sxp = cx + Math.cos(angle) * r;
+    const syp = cy + Math.sin(angle) * r * 0.85;
+    const sz = 6;
+    // Shard outline
+    ctx.fillStyle = darkCol;
+    ctx.beginPath();
+    ctx.moveTo(sxp, syp - sz);
+    ctx.lineTo(sxp + sz*0.6, syp);
+    ctx.lineTo(sxp, syp + sz);
+    ctx.lineTo(sxp - sz*0.6, syp);
+    ctx.closePath(); ctx.fill();
+    // Shard fill
+    ctx.fillStyle = shellCol;
+    ctx.beginPath();
+    ctx.moveTo(sxp, syp - sz + 1);
+    ctx.lineTo(sxp + sz*0.5, syp);
+    ctx.lineTo(sxp, syp + sz - 1);
+    ctx.lineTo(sxp - sz*0.5, syp);
+    ctx.closePath(); ctx.fill();
+    // Shard highlight
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sxp - 1, syp - sz + 2, 1, 2);
+  }
+
+  // Main hexagonal body
+  const bodyR = m.w * 0.35;
+  const rot = t * 0.01;
+  // Outline hex
+  ctx.fillStyle = darkCol;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = rot + i * Math.PI / 3;
+    const x = cx + Math.cos(a) * (bodyR + 2);
+    const y = cy + Math.sin(a) * (bodyR + 2);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.fill();
+  // Body fill
+  ctx.fillStyle = shellCol;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = rot + i * Math.PI / 3;
+    const x = cx + Math.cos(a) * bodyR;
+    const y = cy + Math.sin(a) * bodyR;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.fill();
+  // Inner hexagonal ring
+  ctx.fillStyle = darkCol;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = rot + i * Math.PI / 3 + 0.3;
+    const x = cx + Math.cos(a) * bodyR * 0.7;
+    const y = cy + Math.sin(a) * bodyR * 0.7;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.fill();
+  // Core (glowing)
+  const coreR = bodyR * 0.45 + Math.sin(t * 0.08) * 3;
+  const cg = ctx.createRadialGradient(cx, cy, 2, cx, cy, coreR);
+  cg.addColorStop(0, '#ffffff');
+  cg.addColorStop(0.4, coreCol);
+  cg.addColorStop(1, shellCol);
+  ctx.fillStyle = cg;
+  ctx.beginPath();
+  ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+  ctx.fill();
+  // Central eye slit
+  ctx.fillStyle = darkCol;
+  ctx.fillRect(cx - 14, cy - 1, 28, 3);
+  ctx.fillStyle = coreCol;
+  ctx.fillRect(cx - 13, cy, 26, 1);
+  // Two inner eye pupils
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(cx - 8, cy - 1, 3, 3);
+  ctx.fillRect(cx + 5, cy - 1, 3, 3);
+
+  // Electric tendrils (more in higher phases)
+  const tendrils = phase;
+  for (let i = 0; i < tendrils * 2; i++) {
+    const a = t * 0.04 + i * (Math.PI * 2 / (tendrils * 2));
+    const startR = bodyR + 4;
+    const endR = bodyR + 20 + Math.sin(t * 0.1 + i) * 10;
+    ctx.strokeStyle = glowCol;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * startR, cy + Math.sin(a) * startR);
+    const midR = (startR + endR) / 2;
+    const midA = a + 0.3;
+    ctx.lineTo(cx + Math.cos(midA) * midR, cy + Math.sin(midA) * midR);
+    ctx.lineTo(cx + Math.cos(a) * endR, cy + Math.sin(a) * endR);
+    ctx.stroke();
+    // Tip spark
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx + Math.cos(a) * endR, cy + Math.sin(a) * endR, 2, 2);
+  }
+
+  // Phase 3: lightning cracks across the whole body
+  if (phase >= 3) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      if (Math.random() < 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(cx + (Math.random() - 0.5) * bodyR, cy + (Math.random() - 0.5) * bodyR);
+        ctx.lineTo(cx + (Math.random() - 0.5) * bodyR, cy + (Math.random() - 0.5) * bodyR);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Drifting shard particles
+  if (game.time % (phase === 3 ? 2 : 4) === 0) {
+    const a = Math.random() * Math.PI * 2;
+    game.particles.push({
+      x: cx + Math.cos(a) * m.w * 0.6, y: cy + Math.sin(a) * m.h * 0.6,
+      vx: Math.cos(a) * -0.8, vy: Math.sin(a) * -0.8,
+      life: 40, color: glowCol, size: 2 + Math.random() * 2
+    });
+  }
+}
+
 function drawMushmom(m, sx, sy) {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
   const f = m.facing;
@@ -7563,6 +8256,69 @@ function drawProjectiles() {
           game.particles.push({ x:p.x, y:p.y + p.h, vx:0, vy:1,
             life:18, color:'#44cc22', size:2 });
         }
+      } else if (p.skill === 'shard') {
+        // Crystal shard — rotating diamond with glow
+        const ang = Math.atan2(p.vy, p.vx) + game.time * 0.15;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(ang);
+        ctx.fillStyle = 'rgba(200,160,255,0.4)';
+        ctx.beginPath(); ctx.arc(0, 0, p.w, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#b090ff';
+        ctx.beginPath();
+        ctx.moveTo(0, -p.h/2); ctx.lineTo(p.w/2, 0);
+        ctx.lineTo(0, p.h/2); ctx.lineTo(-p.w/2, 0);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#e8d8ff';
+        ctx.beginPath();
+        ctx.moveTo(0, -p.h/2); ctx.lineTo(p.w/3, 0);
+        ctx.lineTo(0, p.h/4); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        if (game.time % 2 === 0) {
+          game.particles.push({
+            x: p.x, y: p.y, vx: -p.vx * 0.1, vy: -p.vy * 0.1,
+            life: 18, color: '#c8a8ff', size: 2
+          });
+        }
+      } else if (p.skill === 'voidbeam') {
+        // Void beam — thick horizontal energy lance with trailing plasma
+        const dir = p.vx > 0 ? 1 : -1;
+        ctx.save();
+        ctx.translate(cx, cy);
+        // Outer glow
+        ctx.fillStyle = 'rgba(255,68,255,0.35)';
+        ctx.fillRect(-p.w/2 - 8, -p.h/2 - 4, p.w + 16, p.h + 8);
+        // Core beam
+        const beamGrad = ctx.createLinearGradient(-p.w/2, 0, p.w/2, 0);
+        beamGrad.addColorStop(0, 'rgba(255,180,255,0.9)');
+        beamGrad.addColorStop(0.5, '#ff44ff');
+        beamGrad.addColorStop(1, 'rgba(180,40,220,0.9)');
+        ctx.fillStyle = beamGrad;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        // Inner hot core
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-p.w/2 + 2, -p.h/4, p.w - 4, p.h/2);
+        // Leading spear tip
+        ctx.fillStyle = '#ff88ff';
+        ctx.beginPath();
+        ctx.moveTo(dir * p.w/2, -p.h/2);
+        ctx.lineTo(dir * (p.w/2 + 10), 0);
+        ctx.lineTo(dir * p.w/2, p.h/2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // Trailing plasma
+        if (game.time % 2 === 0) {
+          for (let k = 0; k < 2; k++) {
+            game.particles.push({
+              x: p.x - dir * (4 + k * 6),
+              y: p.y + (Math.random() - 0.5) * p.h,
+              vx: -dir * 1.5, vy: (Math.random() - 0.5) * 1.2,
+              life: 22, color: k === 0 ? '#ff88ff' : '#aa44dd', size: 3
+            });
+          }
+        }
       } else {
         // Default enemy projectile
         ctx.fillStyle = col;
@@ -7659,7 +8415,53 @@ function drawPet() {
 function drawHazards() {
   for (const h of game.hazards) {
     const sx = h.cx - game.camera.x;
-    if (h.type === 'meteor_warn') {
+    if (h.type === 'void_tear') {
+      // Swirling void rift on the ground that damages
+      const t = game.time * 0.08;
+      const fade = Math.min(1, h.life / 300);
+      // Outer aura
+      ctx.fillStyle = `rgba(170,68,255,${0.25 * fade})`;
+      ctx.beginPath();
+      ctx.ellipse(sx, h.y + 10, h.w * 0.7, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Swirling rift
+      ctx.fillStyle = `rgba(40,0,60,${0.9 * fade})`;
+      ctx.beginPath();
+      ctx.ellipse(sx, h.y + 15, h.w/2, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Purple lightning
+      ctx.strokeStyle = `rgba(255,130,255,${0.8 * fade})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        const a = t + i * 2;
+        ctx.moveTo(sx + Math.cos(a) * h.w/2 * 0.6, h.y + 15 + Math.sin(a) * 6);
+        ctx.lineTo(sx + Math.cos(a + 1) * h.w/2 * 0.4, h.y + 15 + Math.sin(a + 1) * 4);
+        ctx.stroke();
+      }
+      // Damage player if standing in it
+      if (player.hp > 0 && player.invulnerable <= 0 &&
+          Math.abs((player.x + player.w/2) - h.cx) < h.w/2 &&
+          player.y + player.h > h.y && player.y + player.h < h.y + h.h + 10) {
+        const dmg = Math.max(1, Math.floor(h.atk - getDef() * 0.5));
+        player.hp -= dmg;
+        player.invulnerable = 400;
+        game.damageNumbers.push({
+          x: player.x + 14, y: player.y, vy: -2,
+          text: dmg, life: 40, color: '#ff66ff', size: 14
+        });
+        addShake(3);
+      }
+      // Drifting void particles
+      if (game.time % 4 === 0) {
+        game.particles.push({
+          x: h.cx + (Math.random() - 0.5) * h.w, y: h.y + 15,
+          vx: (Math.random() - 0.5) * 0.5, vy: -1 - Math.random(),
+          life: 30, color: '#aa44ff', size: 2
+        });
+      }
+    }
+    else if (h.type === 'meteor_warn') {
       // Warning circle
       const prog = 1 - h.life / h.maxLife;
       ctx.fillStyle = `rgba(255, 80, 40, ${0.15 + prog * 0.4})`;
@@ -7953,6 +8755,9 @@ function loop(time) {
 
   ctx.restore();
 
+  // Super-boss HP banner
+  drawSuperBossBar();
+
   // Flash overlay
   if (game.flashOverlay > 0) {
     ctx.fillStyle = `rgba(255,255,255,${game.flashOverlay})`;
@@ -7963,6 +8768,65 @@ function loop(time) {
 
   updateUI();
   requestAnimationFrame(loop);
+}
+
+function drawSuperBossBar() {
+  const sb = game.monsters.find(m => m.superBoss && m.currentHp > 0);
+  if (!sb) return;
+  const pad = 40, barW = W - pad * 2, barH = 18;
+  const x = pad, y = 20;
+  const hpPct = Math.max(0, sb.currentHp / sb.maxHp);
+  const phase = sb.phase || 1;
+
+  // Backdrop plate
+  ctx.fillStyle = 'rgba(10,5,30,0.82)';
+  ctx.fillRect(x - 6, y - 22, barW + 12, barH + 42);
+  ctx.strokeStyle = phase === 1 ? '#b090ff' : phase === 2 ? '#ff88dd' : '#ff4466';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 6, y - 22, barW + 12, barH + 42);
+
+  // Name + subtitle
+  ctx.fillStyle = phase === 1 ? '#e0c8ff' : phase === 2 ? '#ffaadd' : '#ff7a8e';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(sb.name.toUpperCase(), W / 2, y - 6);
+
+  // HP bar bg
+  ctx.fillStyle = '#1a0a2a';
+  ctx.fillRect(x, y, barW, barH);
+
+  // Phase tick marks at 33% and 66%
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(x + barW * 0.33, y, 2, barH);
+  ctx.fillRect(x + barW * 0.66, y, 2, barH);
+
+  // HP fill (gradient by phase)
+  const fillW = barW * hpPct;
+  const grad = ctx.createLinearGradient(x, 0, x + fillW, 0);
+  if (phase === 1) {
+    grad.addColorStop(0, '#7a5aee'); grad.addColorStop(1, '#c8a8ff');
+  } else if (phase === 2) {
+    grad.addColorStop(0, '#aa44ee'); grad.addColorStop(1, '#ff88dd');
+  } else {
+    grad.addColorStop(0, '#ff2266'); grad.addColorStop(1, '#ffaa44');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, fillW, barH);
+
+  // Shimmer highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(x, y + 1, fillW, 3);
+
+  // Border
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, barW, barH);
+
+  // HP text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText(`${sb.currentHp | 0} / ${sb.maxHp | 0}  ·  PHASE ${phase}`, W / 2, y + 13);
+  ctx.textAlign = 'left';
 }
 
 // =========================================================================
