@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.6';
+const GAME_VERSION = 'v0.5.7';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -4125,17 +4125,61 @@ const SKILL_FNS = {
     player.x = tx;
     player.vy = -4;
     player.invulnerable = Math.max(player.invulnerable, 350);
-    // Fire 2 arrows forward
-    for (let i = -1; i <= 1; i += 2) {
+    // Fire 2 arrows straight horizontal (no arc, no gravity)
+    for (let i = 0; i < 2; i++) {
       game.projectiles.push({
-        x: player.x + (player.facing > 0 ? player.w : -18), y: player.y + 14,
-        vx: player.facing * 10, vy: i * 1.5, w: 18, h: 6, life: 80,
-        damage: getAtk() * 1.2, owner: 'player', skill: 'arrow', color: '#ddaa66',
+        x: player.x + (player.facing > 0 ? player.w : -18),
+        y: player.y + 12 + i * 8,
+        vx: player.facing * 14, vy: 0,
+        w: 20, h: 6, life: 60,
+        damage: getAtk() * 1.2, owner: 'player', skill: 'arrow', color: '#ffdd88',
+        noGravity: true,
         _enh: player._enh,
       });
     }
   },
-  eagleEye: () => { player.buffs.eagleEye = 8000; showToast('Eagle Eye — +40% Crit', 'epic'); for (let i=0;i<15;i++) game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:(Math.random()-0.5)*2,vy:-1-Math.random()*2,life:40,color:'#ffee66',size:2}); },
+  eagleEye: () => {
+    player.buffs.eagleEye = 8000;
+    showToast('Eagle Eye — +40% Crit', 'epic');
+    // Visual burst for the buff
+    for (let i = 0; i < 15; i++) {
+      game.particles.push({
+        x: player.x + player.w/2, y: player.y + player.h/2,
+        vx: (Math.random()-0.5) * 2, vy: -1 - Math.random() * 2,
+        life: 40, color: '#ffee66', size: 2
+      });
+    }
+    // Point-blank melee knockback burst — 200ms stun on foes in front
+    const reach = 120;
+    const hitbox = {
+      x: player.facing > 0 ? player.x + player.w - 5 : player.x - reach + 5,
+      y: player.y - 4,
+      w: reach,
+      h: player.h + 8,
+    };
+    for (const m of game.monsters) {
+      if (m.currentHp <= 0) continue;
+      if (aabb(hitbox, m)) {
+        const crit = rollCrit();
+        const dmg = Math.floor((getAtk() * 1.1 + Math.random() * 4) * (crit ? getCritDmg() : 1));
+        hitMonster(m, dmg, crit, 'melee');
+        m.vx += player.facing * 7;
+        m.vy -= 2;
+        m.stunTimer = Math.max(m.stunTimer || 0, 200);
+      }
+    }
+    // Kick-up dust particles
+    for (let i = 0; i < 14; i++) {
+      game.particles.push({
+        x: player.x + player.w/2 + player.facing * (10 + Math.random() * 50),
+        y: player.y + player.h - Math.random() * 8,
+        vx: player.facing * (2 + Math.random() * 3),
+        vy: -1 - Math.random() * 2,
+        life: 20, color: i % 2 ? '#ffee88' : '#ddbb55', size: 2
+      });
+    }
+    addShake(3); flash(0.12);
+  },
   // Sniper
   deadeye: () => {
     game.projectiles.push({
@@ -5681,7 +5725,7 @@ function updateProjectiles(dt) {
       else if (p.skill === 'mdark') p.vy += 0.06;
     }
     // Ballistic arc for player projectiles (not homing ones — those steer themselves)
-    if (p.owner === 'player' && !p.homing && p.skill !== 'rainArrow') {
+    if (p.owner === 'player' && !p.homing && !p.noGravity && p.skill !== 'rainArrow') {
       const g = (p.skill === 'arrow' || p.skill === 'dagger' || p.skill === 'charged' ||
                  p.skill === 'deadeye' || p.skill === 'elemArrow' ||
                  p.skill === 'siege' || p.skill === 'oneshot')
