@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.0';
+const GAME_VERSION = 'v0.5.1';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -4183,7 +4183,23 @@ function fireMonsterProjectile(m) {
 }
 
 function updateMonsters(dt) {
+  const camX = game.camera.x;
+  const ACTIVE_PAD = 400; // update monsters within ±400px of viewport
   for (const m of game.monsters) {
+    // Skip expensive AI for faraway non-bosses
+    const dx = (m.x + m.w/2) - (camX + W/2);
+    const far = Math.abs(dx) > W/2 + ACTIVE_PAD;
+    if (far && !m.isBoss && !m.isMiniBoss) {
+      if (m.hitFlash > 0) m.hitFlash -= dt;
+      if (m.stunTimer > 0) m.stunTimer -= dt;
+      if (m.freezeTimer > 0) m.freezeTimer -= dt;
+      // Apply gravity so they don't float if offscreen
+      m.vy += 0.5;
+      if (m.vy > 14) m.vy = 14;
+      m.y += m.vy;
+      checkPlatformCollision(m);
+      continue;
+    }
     if (m.hitFlash > 0) m.hitFlash -= dt;
     if (m.deathMark > 0) m.deathMark -= dt;
     // Monster ranged attack
@@ -4981,7 +4997,7 @@ function triggerSuperBossDeath(m) {
 
   // Massive particle burst (prismatic shards)
   const palette = ['#ffffff','#c8a8ff','#ff88dd','#8ad8ff','#ffd766','#b090ff'];
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 80; i++) {
     const col = palette[i % palette.length];
     game.particles.push({
       x: m.x + m.w/2, y: m.y + m.h/2,
@@ -5334,16 +5350,30 @@ function updateProjectiles(dt) {
 // =========================================================================
 // PARTICLES
 // =========================================================================
+const MAX_PARTICLES = 500;
+const MAX_DMG_NUMBERS = 40;
+const MAX_AFTERIMAGES = 25;
+
 function updateParticles(dt) {
+  // Cap particle count — drop oldest if over budget
+  if (game.particles.length > MAX_PARTICLES) {
+    game.particles.splice(0, game.particles.length - MAX_PARTICLES);
+  }
   for (let i = game.particles.length - 1; i >= 0; i--) {
     const p = game.particles[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 1;
+    p.x += p.vx; p.y += p.vy; p.vy += (p.gravity != null ? p.gravity : 0.15); p.life -= 1;
     if (p.life <= 0) game.particles.splice(i, 1);
+  }
+  if (game.damageNumbers.length > MAX_DMG_NUMBERS) {
+    game.damageNumbers.splice(0, game.damageNumbers.length - MAX_DMG_NUMBERS);
   }
   for (let i = game.damageNumbers.length - 1; i >= 0; i--) {
     const d = game.damageNumbers[i];
     d.y += d.vy; d.vy += 0.15; d.life -= 1;
     if (d.life <= 0) game.damageNumbers.splice(i, 1);
+  }
+  if (game.afterImages.length > MAX_AFTERIMAGES) {
+    game.afterImages.splice(0, game.afterImages.length - MAX_AFTERIMAGES);
   }
 }
 
@@ -6586,42 +6616,58 @@ function drawTownDecor() {
   }
 }
 
-function drawSanctumCosmos() {
-  // Starfield — three parallax layers
-  const t = game.time * 0.002;
+// Cached star positions (built once per layer)
+const SANCTUM_STARS = (() => {
   const layers = [
-    { count: 60, speed: 0.05, size: 1, alpha: 0.5, hue: '#ffffff' },
-    { count: 40, speed: 0.15, size: 2, alpha: 0.75, hue: '#e8d8ff' },
-    { count: 20, speed: 0.3,  size: 3, alpha: 1.0,  hue: '#fff0c0' },
+    { count: 50, speed: 0.05, size: 1, alpha: 0.5, hue: '#ffffff' },
+    { count: 30, speed: 0.15, size: 2, alpha: 0.75, hue: '#e8d8ff' },
+    { count: 16, speed: 0.3,  size: 3, alpha: 1.0,  hue: '#fff0c0' },
   ];
+  const stars = [];
+  let idx = 0;
   for (const L of layers) {
     for (let i = 0; i < L.count; i++) {
-      const seed = i * 137.508;
-      const sx = ((seed * 23 % W) + W - game.camera.x * L.speed) % W;
-      const sy = (seed * 41) % (H - 60);
-      const tw = 0.6 + 0.4 * Math.sin(t * 2 + i);
-      ctx.fillStyle = L.hue;
-      ctx.globalAlpha = L.alpha * tw;
-      ctx.fillRect(sx, sy, L.size, L.size);
+      stars.push({
+        xSeed: (idx * 137.508 * 23) % 960,
+        y: (idx * 41) % 500,
+        size: L.size, alpha: L.alpha, hue: L.hue, speed: L.speed,
+        tw: i * 0.37,
+      });
+      idx++;
     }
+  }
+  return stars;
+})();
+
+function drawSanctumCosmos() {
+  const t = game.time * 0.002;
+  // Starfield — cached positions, twinkle only
+  let lastHue = null, lastAlpha = -1;
+  for (const s of SANCTUM_STARS) {
+    const sx = (s.xSeed + 960 - game.camera.x * s.speed) % 960;
+    const tw = 0.6 + 0.4 * Math.sin(t * 2 + s.tw);
+    const a = s.alpha * tw;
+    if (a !== lastAlpha) { ctx.globalAlpha = a; lastAlpha = a; }
+    if (s.hue !== lastHue) { ctx.fillStyle = s.hue; lastHue = s.hue; }
+    ctx.fillRect(sx, s.y, s.size, s.size);
   }
   ctx.globalAlpha = 1;
 
-  // Nebula clouds (soft radial gradients)
+  // Nebula clouds — soft flat alpha circles (radial gradients too expensive per frame)
   const nebulae = [
-    { x: 200, y: 140, r: 160, col1: 'rgba(180,100,220,0.25)', col2: 'rgba(180,100,220,0)' },
-    { x: 900, y: 100, r: 200, col1: 'rgba(100,180,255,0.22)', col2: 'rgba(100,180,255,0)' },
-    { x: 1500,y: 200, r: 180, col1: 'rgba(255,140,200,0.22)', col2: 'rgba(255,140,200,0)' },
+    { x: 200, y: 140, r: 160, col: 'rgba(180,100,220,0.12)' },
+    { x: 900, y: 100, r: 200, col: 'rgba(100,180,255,0.10)' },
+    { x: 1500,y: 200, r: 180, col: 'rgba(255,140,200,0.10)' },
   ];
   for (const n of nebulae) {
     const sx = n.x - game.camera.x * 0.2;
-    const g = ctx.createRadialGradient(sx, n.y, 0, sx, n.y, n.r);
-    g.addColorStop(0, n.col1); g.addColorStop(1, n.col2);
-    ctx.fillStyle = g; ctx.fillRect(sx - n.r, n.y - n.r, n.r * 2, n.r * 2);
+    if (sx + n.r < 0 || sx - n.r > W) continue;
+    ctx.fillStyle = n.col;
+    ctx.beginPath(); ctx.arc(sx, n.y, n.r, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Floating crystal shards (decorative — drift + rotate)
-  for (let i = 0; i < 14; i++) {
+  // Floating crystal shards (decorative — drift + rotate), reduced to 8
+  for (let i = 0; i < 8; i++) {
     const seed = i * 51.7;
     const wx = (seed * 53) % 1800 + 80;
     const baseY = (seed * 31) % 340 + 40;
@@ -8452,15 +8498,13 @@ function drawAetherion(m, sx, sy) {
   const darkCol = phase === 1 ? '#3a1a6e' : phase === 2 ? '#4a1a5a' : '#6a0a2a';
   const glowCol = phase === 1 ? '#aa88ff' : phase === 2 ? '#ff66aa' : '#ff2288';
 
-  // Outer aura (pulsing)
+  // Outer aura (pulsing) — flat concentric circles instead of expensive gradient
   const pulse = Math.sin(t * 0.05) * 8;
   const auraR = m.w * 0.8 + pulse;
-  const g = ctx.createRadialGradient(cx, cy, m.w/3, cx, cy, auraR);
-  g.addColorStop(0, glowCol + 'aa');
-  g.addColorStop(0.6, glowCol + '44');
-  g.addColorStop(1, glowCol + '00');
-  ctx.fillStyle = g;
-  ctx.fillRect(sx - 40, sy - 40, m.w + 80, m.h + 80);
+  ctx.fillStyle = glowCol + '33';
+  ctx.beginPath(); ctx.arc(cx, cy, auraR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = glowCol + '66';
+  ctx.beginPath(); ctx.arc(cx, cy, auraR * 0.7, 0, Math.PI * 2); ctx.fill();
 
   // Orbiting crystal shards (4-8 depending on phase)
   const shardCount = phase === 1 ? 5 : phase === 2 ? 7 : 9;
@@ -9235,34 +9279,44 @@ function drawDrops() {
 }
 
 function drawParticles() {
+  const camX = game.camera.x;
+  let lastAlpha = -1;
+  let lastColor = null;
   for (const p of game.particles) {
+    const sx = p.x - camX;
+    // Offscreen cull — skip render (still updated for gameplay positioning)
+    if (sx < -20 || sx > W + 20 || p.y < -20 || p.y > H + 20) continue;
     if (p.text) {
       ctx.fillStyle = p.color;
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(p.text, p.x - game.camera.x, p.y);
+      ctx.fillText(p.text, sx, p.y);
+      lastColor = null;
     } else {
-      const alpha = Math.min(1, p.life / 20);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - game.camera.x - p.size/2, p.y - p.size/2, p.size, p.size);
-      ctx.globalAlpha = 1;
+      const alpha = p.life < 20 ? p.life / 20 : 1;
+      if (alpha !== lastAlpha) { ctx.globalAlpha = alpha; lastAlpha = alpha; }
+      if (p.color !== lastColor) { ctx.fillStyle = p.color; lastColor = p.color; }
+      ctx.fillRect(sx - p.size/2, p.y - p.size/2, p.size, p.size);
     }
   }
+  if (lastAlpha !== 1) ctx.globalAlpha = 1;
 }
 
 function drawDamageNumbers() {
   ctx.textAlign = 'center';
+  const camX = game.camera.x;
   for (const d of game.damageNumbers) {
+    const sx = d.x - camX;
+    if (sx < -60 || sx > W + 60 || d.y < -30 || d.y > H + 30) continue;
     ctx.font = `bold ${d.size || 14}px sans-serif`;
-    const alpha = Math.min(1, d.life / 20);
+    const alpha = d.life < 20 ? d.life / 20 : 1;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = '#000';
-    ctx.fillText(d.text, d.x - game.camera.x + 1, d.y + 1);
+    ctx.fillText(d.text, sx + 1, d.y + 1);
     ctx.fillStyle = d.color;
-    ctx.fillText(d.text, d.x - game.camera.x, d.y);
-    ctx.globalAlpha = 1;
+    ctx.fillText(d.text, sx, d.y);
   }
+  ctx.globalAlpha = 1;
 }
 
 // =========================================================================
