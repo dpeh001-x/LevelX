@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.6.0';
+const GAME_VERSION = 'v0.6.1';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -2996,6 +2996,11 @@ function updatePlayer(dt) {
       }
     }
     player.state = 'rush';
+  } else if (player.smokeLock > 0) {
+    // Smoke Dash settle — brief immobile lock
+    player.smokeLock -= dt;
+    player.vx = 0;
+    player.state = 'attack';
   } else {
     // Acceleration-based movement for smoother feel
     const accel = player.onGround ? 1.1 : 0.6;
@@ -3856,8 +3861,8 @@ const SKILL_FNS = {
     }
   },
   smokeDash: () => {
-    // Long-range blink with damaging trail + lingering smoke that damages foes inside
-    const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 240));
+    // Blink with damaging trail + lingering smoke + brief freeze on arrival
+    const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 220));
     const startX = player.x;
     // Damage enemies along path
     for (const m of game.monsters) {
@@ -3901,10 +3906,13 @@ const SKILL_FNS = {
     }
     player.x = tx;
     player.invulnerable = Math.max(player.invulnerable, 400);
+    // 100ms immobile settle — short recovery lock after landing
+    player.vx = 0; player.vy = Math.min(player.vy, 0);
+    player.smokeLock = 100;
     addShake(4); flash(0.15);
   },
   flurry: () => {
-    // Airborne-only horizontal-diagonal dash slash — refund cost if on ground
+    // Airborne-only fast horizontal teleport-sweep — refund cost if on ground
     if (player.onGround) {
       player.mp += SKILLS.flurry.mp;
       player.skillCooldowns.flurry = 0;
@@ -3913,17 +3921,23 @@ const SKILL_FNS = {
       showToast('Flurry needs air!', 'common');
       return;
     }
-    // Lock into a horizontal sweep with gentle downward drift
-    player.vx = player.facing * 14;   // strong horizontal burst
-    player.vy = 3;                    // mild downward drift
+    // Interrupt any in-progress skill/dash/rush — flurry takes priority
+    player.rushTimer = 0;
+    player.dodgeTimer = 0;
+    player.quickDashTimer = 0;
+    player.smokeLock = 0;
+    player.attackTimer = 0;
+    // Lock into a faster horizontal sweep with gentle downward drift
+    player.vx = player.facing * 20;   // much faster horizontal burst
+    player.vy = 2;                    // mild downward drift
     player.invulnerable = Math.max(player.invulnerable, 420);
-    // 5 cuts along the horizontal dash
+    // 5 cuts along the horizontal dash — tighter timing for snappier feel
     const strikes = 5;
     for (let i = 0; i < strikes; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
         // Keep momentum during the sweep
-        player.vx = player.facing * 12;
+        player.vx = player.facing * 18;
         player.vy = Math.min(player.vy, 3);
         // Wide horizontal hitbox — long reach forward, modest vertical
         const reach = 160;
@@ -4137,12 +4151,20 @@ const SKILL_FNS = {
     });
   },
   iceSpike: () => {
-    game.projectiles.push({
-      x: player.x + (player.facing > 0 ? player.w : -20), y: player.y + 18,
-      vx: player.facing * 9, vy: 0, w: 20, h: 14, life: 65,
-      damage: getAtk() * 2.4 + 10, owner: 'player', skill: 'ice', freeze: 1500,
-      color: '#88ccff', _enh: player._enh,
-    });
+    // 3-spike wide AoE + each piercing; spikes spread vertically and on hit splash-freeze nearby
+    const baseX = player.x + (player.facing > 0 ? player.w : -20);
+    const baseY = player.y + 18;
+    for (let i = -1; i <= 1; i++) {
+      game.projectiles.push({
+        x: baseX, y: baseY + i * 14,
+        vx: player.facing * 9, vy: i * 1.5,
+        w: 28, h: 18, life: 70,
+        damage: getAtk() * 1.9 + 8,
+        owner: 'player', skill: 'ice', freeze: 1500, pierce: true,
+        aoeOnHit: 90,       // radius for secondary frost splash
+        color: '#88ccff', _enh: player._enh,
+      });
+    }
   },
   blink: () => {
     const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 180));
@@ -4237,13 +4259,13 @@ const SKILL_FNS = {
     player.x = tx;
     player.vy = -4;
     player.invulnerable = Math.max(player.invulnerable, 350);
-    // Fire 2 arrows straight horizontal (no arc, no gravity)
+    // Fire 2 arrows straight horizontal — short range, parallel to ground
     for (let i = 0; i < 2; i++) {
       game.projectiles.push({
         x: player.x + (player.facing > 0 ? player.w : -18),
         y: player.y + 12 + i * 8,
         vx: player.facing * 14, vy: 0,
-        w: 20, h: 6, life: 60,
+        w: 20, h: 6, life: 22,               // short distance
         damage: getAtk() * 1.2, owner: 'player', skill: 'arrow', color: '#ffdd88',
         noGravity: true,
         _enh: player._enh,
@@ -5881,6 +5903,29 @@ function updateProjectiles(dt) {
           }
           hitMonster(m, dmg, crit, p.skill || 'bolt');
           hitIds.add(m);
+          // Ice splash — AoE on hit for Ice Spike
+          if (p.aoeOnHit && !p._aoeFired) {
+            p._aoeFired = true;
+            const cx = m.x + m.w/2, cy = m.y + m.h/2;
+            for (const m2 of game.monsters) {
+              if (m2 === m || m2.currentHp <= 0) continue;
+              const d = Math.hypot((m2.x + m2.w/2) - cx, (m2.y + m2.h/2) - cy);
+              if (d < p.aoeOnHit) {
+                hitMonster(m2, Math.floor(dmg * 0.55), false, p.skill || 'bolt');
+                if (p.freeze) m2.freezeTimer = Math.max(m2.freezeTimer || 0, p.freeze);
+              }
+            }
+            // Frost burst particles
+            for (let k = 0; k < 18; k++) {
+              const a = (k / 18) * Math.PI * 2;
+              game.particles.push({
+                x: cx, y: cy,
+                vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+                life: 24, color: k % 2 ? '#aaddff' : '#ffffff', size: 3
+              });
+            }
+            addShake(3);
+          }
           if (pEnh) applyEnhOnHit(m, dmg, pEnh);
           // Sniper pierce: basic arrows go through enemies
           if (pEnh && pEnh.pierce) p.pierce = true;
