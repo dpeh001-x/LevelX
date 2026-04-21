@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.7.1';
+const GAME_VERSION = 'v0.7.2';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -4070,7 +4070,7 @@ const SKILL_FNS = {
     addShake(4); flash(0.15);
   },
   flurry: () => {
-    // Airborne-only fast horizontal teleport-sweep — refund cost if on ground
+    // Airborne-only lightning V-slash — propels player down-forward then up-forward
     if (player.onGround) {
       player.mp += SKILLS.flurry.mp;
       player.skillCooldowns.flurry = 0;
@@ -4085,56 +4085,81 @@ const SKILL_FNS = {
     player.quickDashTimer = 0;
     player.smokeLock = 0;
     player.attackTimer = 0;
-    // Lock into a faster horizontal sweep with gentle downward drift
-    player.vx = player.facing * 20;   // much faster horizontal burst
-    player.vy = 2;                    // mild downward drift
-    player.invulnerable = Math.max(player.invulnerable, 420);
-    // 5 cuts along the horizontal dash — tighter timing for snappier feel
-    const strikes = 5;
+    // Phase 1: dive down-forward (descending leg of V)
+    player.vx = player.facing * 14;
+    player.vy = 14;
+    player.invulnerable = Math.max(player.invulnerable, 520);
+    // 6 strikes total — 3 down, pivot, 3 up (V-pattern)
+    const strikes = 6;
+    const pivotAt = 3;          // strike index where we reverse to ascending leg
     for (let i = 0; i < strikes; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
-        // Keep momentum during the sweep
-        player.vx = player.facing * 18;
-        player.vy = Math.min(player.vy, 3);
-        // Wide horizontal hitbox — long reach forward, modest vertical
-        const reach = 160;
+        // Re-assert velocity every cut so the V arc holds through the combo
+        if (i < pivotAt) {
+          // Descending leg
+          player.vx = player.facing * 14;
+          player.vy = 14;
+        } else if (i === pivotAt) {
+          // Pivot — reverse vertical with a snap, keep horizontal
+          player.vx = player.facing * 14;
+          player.vy = -14;
+          addShake(4); flash(0.18);
+          // Pivot burst at bottom of V
+          for (let j = 0; j < 20; j++) {
+            const a = (j / 20) * Math.PI * 2;
+            game.particles.push({
+              x: player.x + player.w/2, y: player.y + player.h,
+              vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+              life: 22, color: j % 2 ? '#ff99ff' : '#fff', size: 3
+            });
+          }
+        } else {
+          // Ascending leg
+          player.vx = player.facing * 14;
+          player.vy = -14;
+        }
+        // Diagonal slash hitbox aligned to current travel direction
+        const forwardReach = 130;
+        const verticalReach = 70;
         const hitbox = {
-          x: player.facing > 0 ? player.x + player.w - 5 : player.x - reach + 5,
-          y: player.y + 4,
-          w: reach,
-          h: player.h + 20,           // mostly horizontal, slight vertical margin
+          x: player.facing > 0 ? player.x + player.w - 5 : player.x - forwardReach + 5,
+          y: player.y + (i < pivotAt ? 0 : -verticalReach / 2),
+          w: forwardReach,
+          h: player.h + verticalReach,
         };
         for (const m of game.monsters) {
           if (m.currentHp <= 0) continue;
           if (aabb(hitbox, m)) {
             const crit = rollCrit();
-            const dmg = Math.floor((getAtk() * 0.65 + Math.random() * 4) * (crit ? getCritDmg() : 1));
+            const dmg = Math.floor((getAtk() * 0.6 + Math.random() * 4) * (crit ? getCritDmg() : 1));
             hitMonster(m, dmg, crit, 'melee');
-            m.vx += player.facing * 5;
-            m.vy -= 1.5;                // slight lift, not slam
+            m.vx += player.facing * 4;
+            // Send downward on descent, upward on ascent — mirrors the V
+            m.vy += (i < pivotAt ? 2 : -3);
           }
         }
-        // Horizontal slash streak particles
+        // Diagonal slash streak aligned to travel angle
+        const dirY = i < pivotAt ? 1 : -1;
         const origin = { x: player.x + player.w/2, y: player.y + player.h/2 };
-        for (let j = 0; j < 12; j++) {
-          const t = j / 12;
+        for (let j = 0; j < 10; j++) {
+          const t = j / 10;
           game.particles.push({
-            x: origin.x + player.facing * t * reach,
-            y: origin.y + (Math.random() - 0.5) * 10,
-            vx: player.facing * (3 + Math.random() * 2),
-            vy: (Math.random() - 0.5) * 1.5,
-            life: 16, color: j % 2 ? '#ff99ff' : '#ffccff', size: 3
+            x: origin.x + player.facing * t * forwardReach,
+            y: origin.y + dirY * t * 40,
+            vx: player.facing * (2 + Math.random() * 2),
+            vy: dirY * (2 + Math.random() * 1.5),
+            life: 14, color: j % 2 ? '#ff99ff' : '#ffccff', size: 3
           });
         }
         // Motion afterimage
         game.afterImages.push({
           x: player.x, y: player.y,
           facing: player.facing, state:'attack', life: 14, maxLife: 14,
-          color: `rgba(255,120,220,${0.55 - i * 0.08})`,
+          color: `rgba(255,120,220,${0.6 - i * 0.06})`,
         });
         addShake(2);
-      }, i * 60);
+      }, i * 50);               // ~50ms between cuts — lightning fast
     }
   },
   // Ninja
