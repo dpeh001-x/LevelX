@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.7.0';
+const GAME_VERSION = 'v0.7.1';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1529,30 +1529,35 @@ const monsterTypes = {
 // =========================================================================
 const MAPS = {
   town: {
-    name:'Everdawn Village',
+    name:'Everdawn Bazaar',
     sky:['#ffd4e2','#ffe8d0','#e8f5cf'],
-    worldWidth: 1800,
+    worldWidth: 1500,
     isTown: true,
     platforms: [
-      {x:0,y:480,w:1800,h:60,type:'ground'},
-      {x:280,y:360,w:180,h:12,type:'platform'},
-      {x:600,y:300,w:180,h:12,type:'platform'},
-      {x:900,y:360,w:180,h:12,type:'platform'},
-      {x:1200,y:300,w:180,h:12,type:'platform'},
-      {x:1500,y:360,w:180,h:12,type:'platform'},
-      {x:440,y:220,w:140,h:12,type:'platform'},
-      {x:1060,y:220,w:140,h:12,type:'platform'},
+      {x:0,y:480,w:1500,h:60,type:'ground'},
+      // Raised shop awnings / market stalls (walkable)
+      {x:160, y:360, w:140, h:12, type:'platform'},
+      {x:360, y:360, w:140, h:12, type:'platform'},
+      {x:560, y:360, w:140, h:12, type:'platform'},
+      {x:780, y:360, w:140, h:12, type:'platform'},
+      {x:980, y:360, w:140, h:12, type:'platform'},
+      {x:1180,y:360, w:140, h:12, type:'platform'},
+      // Upper balcony tier
+      {x:260, y:240, w:160, h:12, type:'platform'},
+      {x:620, y:210, w:240, h:12, type:'platform'},  // central plaza awning
+      {x:1040,y:240, w:160, h:12, type:'platform'},
     ],
     npcs: [
-      {x:200, name:'Elspeth',      role:'potion',  color:'#ff88bb'},
-      {x:500, name:'Brok',         role:'weapon',  color:'#6b8fcc'},
-      {x:820, name:'Master Ren',   role:'skills',  color:'#cc9944'},
-      {x:1120,name:'Sage Mira',    role:'sage',    color:'#aa66cc'},
-      {x:1440,name:'Old Arlen',    role:'info',    color:'#6aaa88'},
+      {x:170,  name:'Elspeth',       role:'potion',  color:'#ff88bb'},
+      {x:370,  name:'Brok',          role:'weapon',  color:'#6b8fcc'},
+      {x:570,  name:'Master Ren',    role:'skills',  color:'#cc9944'},
+      {x:790,  name:'Sage Mira',     role:'sage',    color:'#aa66cc'},
+      {x:990,  name:'Old Arlen',     role:'info',    color:'#6aaa88'},
+      {x:1220, name:'Caravan Yara',  role:'caravan', color:'#e8b85a'},
     ],
     portals: [
-      {x:120, dest:'sunsetBeach', name:'◀ Sunset Coast'},
-      {x:1680,dest:'forest',     name:'▶ Emerald Thicket'},
+      {x:70,   dest:'sunsetBeach', name:'◀ Sunset Coast'},
+      {x:1430, dest:'forest',      name:'▶ Emerald Thicket'},
     ],
     spawns: [],
   },
@@ -6519,6 +6524,9 @@ function openNPC(npc) {
   } else if (npc.role === 'info') {
     text = 'Heard of the Gelwater Grotto? Head east into the Emerald Thicket. The Gelmonarch rules down there. And deeper still lies Queen Fungara\'s hollow...';
     opts.push({ t:'Thanks', cb: closeDialog });
+  } else if (npc.role === 'caravan') {
+    text = 'Need a ride? My camels have seen every dune and crypt between here and the Singularity. 50 Lumens a trip.';
+    opts.push({ t:'Browse Routes 🗺', cb:() => { closeDialog(); openTaxi(); } });
   }
   opts.push({ t:'Leave', cb: closeDialog });
   document.getElementById('dialog-text').textContent = text;
@@ -7655,12 +7663,102 @@ function drawBackground() {
 
 function drawTownDecor() {
   const buildings = [
-    { x:100, w:140, h:140, roof:'#cc4466', roofDark:'#8a2848', wall:'#e8c89a', wallDark:'#c89868', sign:'🧪', name:'POTIONS' },
-    { x:400, w:160, h:160, roof:'#4488cc', roofDark:'#285688', wall:'#d0d0e8', wallDark:'#a0a0c0', sign:'⚔️', name:'FORGE' },
-    { x:720, w:150, h:130, roof:'#cc8844', roofDark:'#884820', wall:'#e0c8a0', wallDark:'#b09870', sign:'📘', name:'SKILLS' },
-    { x:1020,w:150, h:150, roof:'#8844cc', roofDark:'#4a1a88', wall:'#d8c8e8', wallDark:'#a898c0', sign:'✨', name:'SAGE' },
-    { x:1340,w:140, h:140, roof:'#66aa66', roofDark:'#2a6a2a', wall:'#d4e0c0', wallDark:'#a8b890', sign:'🏡', name:'INN' },
+    { x:120, w:120, h:130, roof:'#cc4466', roofDark:'#8a2848', wall:'#e8c89a', wallDark:'#c89868', sign:'🧪', name:'POTIONS' },
+    { x:320, w:120, h:130, roof:'#4488cc', roofDark:'#285688', wall:'#d0d0e8', wallDark:'#a0a0c0', sign:'⚔️', name:'FORGE' },
+    { x:520, w:120, h:120, roof:'#cc8844', roofDark:'#884820', wall:'#e0c8a0', wallDark:'#b09870', sign:'📘', name:'SKILLS' },
+    { x:740, w:120, h:140, roof:'#8844cc', roofDark:'#4a1a88', wall:'#d8c8e8', wallDark:'#a898c0', sign:'✨', name:'SAGE' },
+    { x:940, w:120, h:130, roof:'#66aa66', roofDark:'#2a6a2a', wall:'#d4e0c0', wallDark:'#a8b890', sign:'🏡', name:'INN' },
+    { x:1170,w:130, h:140, roof:'#e8a844', roofDark:'#a26a20', wall:'#f0d8a0', wallDark:'#b89868', sign:'🐪', name:'CARAVAN' },
   ];
+
+  // ---- Cobblestone street underlay ----
+  (() => {
+    const camShift = game.camera.x;
+    // Flagstone strip at the ground line (above the dirt)
+    ctx.fillStyle = '#b8a880';
+    ctx.fillRect(0, 466, W, 14);
+    ctx.fillStyle = '#a89568';
+    ctx.fillRect(0, 466, W, 2);
+    for (let i = 0; i < 80; i++) {
+      const wx = i * 28 - (camShift | 0) % 28;
+      ctx.fillStyle = '#8a7a56';
+      ctx.fillRect(wx, 467, 1, 13);
+      ctx.fillStyle = '#d8c890';
+      ctx.fillRect(wx + 2, 468, 1, 1);
+    }
+  })();
+
+  // ---- Bunting banner strings spanning the rooftops ----
+  const bunt = [
+    { a: 240, b: 440, y: 340, col: ['#ff6655','#ffee66','#66ccff'] },
+    { a: 540, b: 740, y: 320, col: ['#ffaa44','#bb88ff','#77ee99'] },
+    { a: 860, b: 1060, y: 340, col: ['#ff99cc','#99ccff','#ffdd55'] },
+    { a: 1090, b: 1300, y: 340, col: ['#ffcc66','#ff7733','#aa66ff'] },
+  ];
+  for (const b of bunt) {
+    const sa = b.a - game.camera.x, sb = b.b - game.camera.x;
+    if (sb < 0 || sa > W) continue;
+    // Rope sag
+    ctx.strokeStyle = '#3a2814';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let t = 0; t <= 1; t += 0.05) {
+      const x = sa + (sb - sa) * t;
+      const sag = Math.sin(t * Math.PI) * 14;
+      const y = b.y + sag;
+      if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Triangle pennants
+    for (let t = 0.08; t < 1; t += 0.10) {
+      const x = sa + (sb - sa) * t;
+      const sag = Math.sin(t * Math.PI) * 14;
+      const y = b.y + sag;
+      const c = b.col[(t * 10) | 0 % b.col.length];
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 12);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // ---- Central plaza fountain (between Skills and Sage) ----
+  (() => {
+    const fx = 690 - game.camera.x;
+    if (fx < -80 || fx > W + 80) return;
+    // Basin outer
+    ctx.fillStyle = '#7a7888';
+    ctx.beginPath(); ctx.ellipse(fx, 472, 34, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#a0a0b0';
+    ctx.beginPath(); ctx.ellipse(fx, 470, 32, 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Water
+    ctx.fillStyle = '#66bbdd';
+    ctx.beginPath(); ctx.ellipse(fx, 468, 28, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#99ddee';
+    ctx.fillRect(fx - 10, 467, 20, 1);
+    // Central pillar
+    ctx.fillStyle = '#5a5868';
+    ctx.fillRect(fx - 4, 438, 8, 30);
+    ctx.fillStyle = '#8a8898';
+    ctx.fillRect(fx - 4, 438, 2, 30);
+    // Water spout
+    const spoutT = game.time * 0.06;
+    for (let i = 0; i < 4; i++) {
+      const drop = (spoutT + i * 0.6) % 1;
+      const dy = 435 - (1 - drop) * 18;
+      const dx = Math.sin(drop * Math.PI) * 6;
+      ctx.fillStyle = `rgba(180,230,255,${1 - drop})`;
+      ctx.fillRect(fx + dx - 1, dy, 2, 4);
+      ctx.fillRect(fx - dx - 1, dy, 2, 4);
+    }
+    // Spout top bulb
+    ctx.fillStyle = '#d8e8f0';
+    ctx.beginPath(); ctx.arc(fx, 434, 3, 0, Math.PI * 2); ctx.fill();
+  })();
   for (const b of buildings) {
     const sx = b.x - game.camera.x;
     if (sx + b.w < 0 || sx > W) continue;
@@ -7808,6 +7906,115 @@ function drawTownDecor() {
     ctx.beginPath();
     ctx.arc(sx + b.w - 22 + Math.sin(smokeT + 2) * 4, wallTop - 56 + Math.cos(smokeT + 2) * 2, 6, 0, Math.PI * 2);
     ctx.fill();
+
+    // ---- Market awning in front of shop (striped canopy over a wooden counter) ----
+    const awY = 416;
+    const stripeColors = { '#cc4466':'#ffcccc', '#4488cc':'#bbddff', '#cc8844':'#ffdd99', '#8844cc':'#e8c8ff', '#66aa66':'#c8e8c0', '#e8a844':'#ffd880' };
+    const stripe = stripeColors[b.roof] || '#ffeecc';
+    // Awning backing (dark edge)
+    ctx.fillStyle = b.roofDark;
+    ctx.fillRect(sx - 6, awY - 2, b.w + 12, 4);
+    // Stripes
+    const stripeW = 8;
+    for (let i = 0; i < Math.ceil((b.w + 12) / stripeW); i++) {
+      ctx.fillStyle = i % 2 === 0 ? b.roof : stripe;
+      ctx.fillRect(sx - 6 + i * stripeW, awY, stripeW, 10);
+    }
+    // Scalloped fringe
+    for (let i = 0; i < Math.ceil((b.w + 12) / 8); i++) {
+      const fx = sx - 6 + i * 8;
+      ctx.fillStyle = i % 2 === 0 ? b.roof : stripe;
+      ctx.beginPath();
+      ctx.moveTo(fx, awY + 10);
+      ctx.lineTo(fx + 4, awY + 16);
+      ctx.lineTo(fx + 8, awY + 10);
+      ctx.closePath(); ctx.fill();
+    }
+    // Counter-top
+    ctx.fillStyle = '#6a4428';
+    ctx.fillRect(sx - 4, 454, b.w + 8, 8);
+    ctx.fillStyle = '#8a5a38';
+    ctx.fillRect(sx - 4, 454, b.w + 8, 2);
+    // Counter legs
+    ctx.fillStyle = '#4a2a10';
+    ctx.fillRect(sx, 462, 3, 18);
+    ctx.fillRect(sx + b.w - 3, 462, 3, 18);
+    // Awning support poles
+    ctx.fillStyle = '#3a2414';
+    ctx.fillRect(sx - 6, awY + 10, 2, 16);
+    ctx.fillRect(sx + b.w + 4, awY + 10, 2, 16);
+
+    // ---- Lantern swaying above the door ----
+    const lanT = Math.sin(game.time * 0.04 + b.x * 0.01) * 2;
+    const lx = sx + b.w/2, ly = 480 - 84;
+    ctx.strokeStyle = '#3a2008';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lx, ly - 10); ctx.lineTo(lx + lanT * 0.3, ly);
+    ctx.stroke();
+    // Lantern cap
+    ctx.fillStyle = '#6a4220';
+    ctx.fillRect(lx - 5 + lanT, ly, 10, 3);
+    // Glowing body
+    ctx.fillStyle = '#ffcc66';
+    ctx.fillRect(lx - 4 + lanT, ly + 3, 8, 8);
+    ctx.fillStyle = '#ffee99';
+    ctx.fillRect(lx - 3 + lanT, ly + 4, 6, 5);
+    // Base
+    ctx.fillStyle = '#6a4220';
+    ctx.fillRect(lx - 4 + lanT, ly + 11, 8, 2);
+
+    // ---- Crates & barrels stacked near counter edges ----
+    if (b.sign === '🧪' || b.sign === '📘' || b.sign === '🏡') {
+      // Crate pile (left of shop)
+      const cx2 = sx - 20;
+      ctx.fillStyle = '#5a3820';
+      ctx.fillRect(cx2, 464, 16, 16);
+      ctx.fillStyle = '#8a5830';
+      ctx.fillRect(cx2 + 1, 465, 14, 14);
+      ctx.strokeStyle = '#3a2008';
+      ctx.strokeRect(cx2 + 1.5, 465.5, 13, 13);
+      ctx.beginPath();
+      ctx.moveTo(cx2 + 1, 465); ctx.lineTo(cx2 + 15, 479);
+      ctx.moveTo(cx2 + 15, 465); ctx.lineTo(cx2 + 1, 479);
+      ctx.stroke();
+      // Small crate on top
+      ctx.fillStyle = '#5a3820';
+      ctx.fillRect(cx2 + 2, 452, 12, 12);
+      ctx.fillStyle = '#8a5830';
+      ctx.fillRect(cx2 + 3, 453, 10, 10);
+    }
+    if (b.sign === '⚔️' || b.sign === '✨' || b.sign === '🐪') {
+      // Barrel (right of shop)
+      const brx = sx + b.w + 8;
+      ctx.fillStyle = '#5a3820';
+      ctx.fillRect(brx, 460, 18, 20);
+      ctx.fillStyle = '#8a5830';
+      ctx.fillRect(brx + 2, 460, 14, 20);
+      ctx.fillStyle = '#d8a468';
+      ctx.fillRect(brx + 2, 462, 14, 2);
+      ctx.fillRect(brx + 2, 470, 14, 2);
+      ctx.fillRect(brx + 2, 478, 14, 2);
+      // Rim
+      ctx.fillStyle = '#3a2008';
+      ctx.fillRect(brx, 460, 18, 1);
+    }
+  }
+
+  // ---- Ambient pigeons / butterflies above the plaza ----
+  const ptCount = 3;
+  for (let i = 0; i < ptCount; i++) {
+    const t = game.time * 0.03 + i * 2.1;
+    const wx = 400 + i * 280 + Math.cos(t) * 60;
+    const wy = 180 + Math.sin(t * 1.4) * 20;
+    const sxp = wx - game.camera.x;
+    if (sxp < -20 || sxp > W + 20) continue;
+    const flap = Math.sin(t * 6) > 0 ? 1 : -1;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sxp, wy, 2, 2);
+    ctx.fillStyle = '#d8d8d8';
+    ctx.fillRect(sxp - 3, wy - flap, 3, 1);
+    ctx.fillRect(sxp + 2, wy - flap, 3, 1);
   }
 }
 
