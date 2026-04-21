@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.6.4';
+const GAME_VERSION = 'v0.7.0';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1521,6 +1521,7 @@ const monsterTypes = {
   king:     { name:'Gelmonarch',      w:64, h:56, color:'#66ccff', shell:'#3388cc', hp:1200,atk:40, exp:700, mesos:400,speed:0.8, jump:8,  boss:true },
   mushmom:  { name:'Queen Fungara',   w:76, h:86, color:'#f0d8a8', shell:'#aa2244', hp:2500,atk:50, exp:1500,mesos:1000,speed:0.6,jump:6,  boss:true },
   aetherion:{ name:'Aetherion, the Shardfather', w:160, h:160, color:'#7a5aee', shell:'#c8a8ff', hp:18000,atk:90, exp:12000,mesos:8000,speed:0.5,jump:0, boss:true, superBoss:true },
+  gravitos: { name:'Gravitos, the Weight-Bearer', w:180, h:180, color:'#1a0a2e', shell:'#6634a8', hp:28000, atk:110, exp:18000, mesos:12000, speed:0.4, jump:0, boss:true, superBoss:true, hyperBoss:true },
 };
 
 // =========================================================================
@@ -1895,10 +1896,37 @@ const MAPS = {
       {x:1560,y:160, w:160,  h:12, type:'platform'},
     ],
     portals: [
-      {x:80, dest:'lavaCavern', name:'◀ Lava Cavern'},
+      {x:80,   dest:'lavaCavern',      name:'◀ Lava Cavern'},
+      {x:1920, dest:'gravitosArena',   name:'▶ Singularity'},
     ],
     spawns: [
       {type:'aetherion', count:1, boss:true},
+    ],
+  },
+  gravitosArena: {
+    name:'The Singularity',
+    sky:['#000005','#0a0215','#1a0828'],
+    worldWidth: 2200,
+    levelReq: 35,
+    isBossArena: true,
+    bossType: 'gravitos',
+    gravityMul: 3,                      // ← 3× gravity for player / mobs / projectiles
+    singularity: true,
+    platforms: [
+      {x:0,    y:480, w:2200, h:60, type:'ground'},
+      {x:140,  y:380, w:180,  h:12, type:'platform'},
+      {x:1880, y:380, w:180,  h:12, type:'platform'},
+      {x:500,  y:320, w:200,  h:12, type:'platform'},
+      {x:1500, y:320, w:200,  h:12, type:'platform'},
+      {x:900,  y:260, w:400,  h:12, type:'platform'},
+      {x:340,  y:180, w:160,  h:12, type:'platform'},
+      {x:1700, y:180, w:160,  h:12, type:'platform'},
+    ],
+    portals: [
+      {x:80, dest:'sanctum', name:'◀ Aetherion\'s Sanctum'},
+    ],
+    spawns: [
+      {type:'gravitos', count:1, boss:true},
     ],
   },
   boss: {
@@ -2902,11 +2930,12 @@ function spawnMonster(x, y, type, isBoss, isMiniBoss) {
   });
   // Boss intro cue
   if (isBoss) {
-    const bossNames = { king:'Gelmonarch', mushmom:'Queen Fungara', aetherion:'Aetherion, the Shardfather' };
+    const bossNames = { king:'Gelmonarch', mushmom:'Queen Fungara', aetherion:'Aetherion, the Shardfather', gravitos:'Gravitos, the Weight-Bearer' };
     const subs = {
       king:'Sovereign of the Gelwater Grotto',
       mushmom:'Matriarch of the Hollow',
       aetherion:'Warden of the Broken Sanctum — brace yourself',
+      gravitos:'Beneath the Singularity — even light falls',
     };
     spawnBossIntro(bossNames[type] || t.name, subs[type] || 'ready your blade');
   }
@@ -3185,9 +3214,11 @@ function updatePlayer(dt) {
     if (player.attackTimer <= 0) player.attacking = false;
   }
 
-  // Gravity
-  player.vy += 0.5;
-  if (player.vy > 14) player.vy = 14;
+  // Gravity (map-scaled — Gravitos arena amplifies this)
+  const gM = gravMul();
+  player.vy += 0.5 * gM;
+  const vyCap = 14 * Math.sqrt(gM);
+  if (player.vy > vyCap) player.vy = vyCap;
 
   player.x += player.vx;
   if (player.x < 0) player.x = 0;
@@ -3564,6 +3595,9 @@ function castSkill(id) {
 }
 
 // ============ Skill implementations ============
+// Per-map gravity multiplier (Gravitos arena = 3x)
+function gravMul() { return (game.mapData && game.mapData.gravityMul) || 1; }
+
 // Archer aim — holding UP/DOWN tilts projectiles ~28°
 function getArcherAim() {
   if (player.cls !== 'archer') return { cosA: 1, sinA: 0 };
@@ -5021,8 +5055,10 @@ function updateMonsters(dt) {
       if (m.stunTimer > 0) m.stunTimer -= dt;
       if (m.freezeTimer > 0) m.freezeTimer -= dt;
       // Apply gravity so they don't float if offscreen
-      m.vy += 0.5;
-      if (m.vy > 14) m.vy = 14;
+      const _gM = gravMul();
+      m.vy += 0.5 * _gM;
+      const _cap = 14 * Math.sqrt(_gM);
+      if (m.vy > _cap) m.vy = _cap;
       m.y += m.vy;
       checkPlatformCollision(m);
       continue;
@@ -5100,9 +5136,11 @@ function updateMonsters(dt) {
       if (distToPlayer < 350 && yDiff < 150) m.aggroTarget = player;
     }
 
-    // Physics
-    m.vy += 0.5;
-    if (m.vy > 14) m.vy = 14;
+    // Physics (gravity scales with map)
+    const _mGM = gravMul();
+    m.vy += 0.5 * _mGM;
+    const _mCap = 14 * Math.sqrt(_mGM);
+    if (m.vy > _mCap) m.vy = _mCap;
     m.x += m.vx; m.y += m.vy;
     m.vx *= m.isBoss ? 0.94 : 0.9;
     if (m.x < 0) { m.x = 0; m.facing = 1; }
@@ -5374,6 +5412,142 @@ function bossAI(m, dt, distToPlayer) {
         }
       }
       if (m.patternTimer > 500) { m.patternState = 'idle'; m.patternTimer = 0; m._teleported = false; }
+    }
+  } else if (m.type === 'gravitos') {
+    // ==== GRAVITOS — hyper boss in the Singularity arena ====
+    const hpPct = m.currentHp / m.maxHp;
+    const phase = hpPct > 0.66 ? 1 : hpPct > 0.33 ? 2 : 3;
+    if (m.phase !== phase) {
+      m.phase = phase;
+      m.patternTimer = 0;
+      m.patternState = 'idle';
+      if (phase === 2) {
+        showToast('🌑 GRAVITOS COLLAPSES — density rises', 'legendary');
+        flash(0.5); addShake(10);
+      } else if (phase === 3) {
+        showToast('🕳 EVENT HORIZON — everything falls', 'legendary');
+        flash(0.7); addShake(16); addHitStop(160);
+      }
+    }
+    // Hover with slow drift toward player
+    m.vy = Math.sin(game.time * 0.03) * 0.6;
+    const dxg = (player.x + player.w/2) - (m.x + m.w/2);
+    m.vx += Math.sign(dxg) * 0.03;
+    if (Math.abs(m.vx) > 1.2) m.vx = Math.sign(m.vx) * 1.2;
+
+    const cycleBase = phase === 1 ? 2200 : phase === 2 ? 1600 : 1050;
+
+    if (m.patternState === 'idle') {
+      if (m.patternTimer > cycleBase) {
+        const roll = Math.random();
+        if (phase === 1) {
+          m.patternState = roll < 0.45 ? 'crush' : roll < 0.8 ? 'slam' : 'pull';
+        } else if (phase === 2) {
+          m.patternState = roll < 0.30 ? 'crush' : roll < 0.55 ? 'slam' : roll < 0.8 ? 'pull' : 'wave';
+        } else {
+          m.patternState = roll < 0.25 ? 'crush' : roll < 0.50 ? 'slam' : roll < 0.75 ? 'wave' : 'blackhole';
+        }
+        m.patternTimer = 0;
+      }
+    } else if (m.patternState === 'crush') {
+      // Gravity Crush — 3-5 ground telegraph columns then crush damage
+      if (m.patternTimer > 500 && !m._crushFired) {
+        m._crushFired = true;
+        const cols = phase === 3 ? 5 : phase === 2 ? 4 : 3;
+        for (let i = 0; i < cols; i++) {
+          const tx = 200 + Math.random() * (game.mapData.worldWidth - 400);
+          game.hazards.push({
+            type:'meteor_warn', cx: tx, x: tx - 90, y: 0, w: 180, h: H,
+            life: 900, maxLife: 900, atk: m.atk * 0.7,
+          });
+        }
+        showToast('⬇ GRAVITY CRUSH', 'epic');
+      }
+      if (m.patternTimer > 1200) { m.patternState = 'idle'; m.patternTimer = 0; m._crushFired = false; }
+    } else if (m.patternState === 'slam') {
+      // Body slam — boss rises, then drops fast on player's column
+      if (m.patternTimer < 400) {
+        m.vy = -6;                                    // lift
+      } else if (m.patternTimer < 500 && !m._slamPrep) {
+        m._slamPrep = true;
+        m.x = Math.max(0, Math.min(game.mapData.worldWidth - m.w, player.x + player.w/2 - m.w/2));
+      } else if (m.patternTimer < 900) {
+        m.vy = 16 * Math.sqrt(gravMul());             // plummet scaled to gravity
+        // Impact when near floor
+        if (m.y + m.h > 460 && !m._slamHit) {
+          m._slamHit = true;
+          addShake(14); flash(0.3);
+          const cx = m.x + m.w/2;
+          for (const mm of game.monsters) { /* ignore */ }
+          // Damage player if nearby
+          if (Math.abs((player.x + player.w/2) - cx) < 180 && player.invulnerable <= 0) {
+            const dmg = Math.max(1, Math.floor(m.atk * 1.1 - getDef() * 0.5));
+            player.hp -= (player._god ? 0 : dmg);
+            player.hitStun = 160;
+            game.damageNumbers.push({ x: player.x + 14, y: player.y, vy: -2, text: dmg, life: 40, color:'#ff4444', size: 16 });
+          }
+          // Ground wave particles
+          for (let i = 0; i < 40; i++) {
+            game.particles.push({
+              x: cx + (Math.random()-0.5) * 220,
+              y: 470, vx: (Math.random()-0.5) * 6, vy: -3 - Math.random() * 4,
+              life: 26, color: i % 2 ? '#8844aa' : '#4a1a6a', size: 3
+            });
+          }
+        }
+      }
+      if (m.patternTimer > 1100) { m.patternState = 'idle'; m.patternTimer = 0; m._slamPrep = false; m._slamHit = false; }
+    } else if (m.patternState === 'pull') {
+      // Gravity well — pull player toward boss for 700ms
+      if (m.patternTimer < 700) {
+        const bcx = m.x + m.w/2, bcy = m.y + m.h/2;
+        const pcx = player.x + player.w/2, pcy = player.y + player.h/2;
+        const dxp = bcx - pcx, dyp = bcy - pcy;
+        const dist = Math.hypot(dxp, dyp) || 1;
+        const strength = 0.35;
+        player.vx += (dxp / dist) * strength;
+        player.vy += (dyp / dist) * strength - 0.2;   // small upward kick to counter gravity slightly
+        if (game.time % 3 === 0) {
+          for (let i = 0; i < 2; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const r = 80 + Math.random() * 40;
+            game.particles.push({
+              x: bcx + Math.cos(a) * r, y: bcy + Math.sin(a) * r,
+              vx: -Math.cos(a) * 4, vy: -Math.sin(a) * 4,
+              life: 20, color: '#aa44ff', size: 3
+            });
+          }
+        }
+      }
+      if (m.patternTimer > 1000) { m.patternState = 'idle'; m.patternTimer = 0; }
+    } else if (m.patternState === 'wave') {
+      // Weight wave — horizontal shockwaves along ground left+right
+      if (m.patternTimer > 400 && !m._waveFired) {
+        m._waveFired = true;
+        for (const dir of [-1, 1]) {
+          game.projectiles.push({
+            x: m.x + m.w/2, y: 460,
+            vx: dir * 9, vy: 0, w: 30, h: 24, life: 140,
+            damage: m.atk * 0.9, owner: 'enemy', skill: 'shock',
+            color: '#aa44ff', pierce: true, noGravity: true,
+          });
+        }
+        addShake(6); flash(0.15);
+      }
+      if (m.patternTimer > 900) { m.patternState = 'idle'; m.patternTimer = 0; m._waveFired = false; }
+    } else if (m.patternState === 'blackhole') {
+      // Phase-3 only — drop a black-hole hazard that pulls for 2s
+      if (m.patternTimer > 300 && !m._bhFired) {
+        m._bhFired = true;
+        const bhx = player.x + player.w/2;
+        game.hazards.push({
+          type:'blackhole', cx: bhx, x: bhx - 80, y: 380, w: 160, h: 100,
+          life: 2000, maxLife: 2000, atk: m.atk * 0.5,
+        });
+        showToast('🕳 BLACK HOLE', 'legendary');
+        flash(0.2); addShake(4);
+      }
+      if (m.patternTimer > 1200) { m.patternState = 'idle'; m.patternTimer = 0; m._bhFired = false; }
     }
   } else if (m.type === 'mushmom') {
     // Mushmom: 3 patterns
@@ -6009,7 +6183,7 @@ function updateProjectiles(dt) {
                  p.skill === 'deadeye' || p.skill === 'elemArrow' ||
                  p.skill === 'siege' || p.skill === 'oneshot')
               ? 0.20 : 0.14;
-      p.vy += g;
+      p.vy += g * gravMul();
     }
 
     // Trail
@@ -8851,6 +9025,7 @@ function drawMonster(m) {
   else if (m.type === 'king') drawKingSlime(m, sx, sy);
   else if (m.type === 'mushmom') drawMushmom(m, sx, sy);
   else if (m.type === 'aetherion') drawAetherion(m, sx, sy);
+  else if (m.type === 'gravitos') drawGravitos(m, sx, sy);
 
   // Burn effect
   if (m.burnTimer > 0) {
@@ -9509,6 +9684,66 @@ function drawKingSlime(m, sx, sy) {
   // Teeth
   px(cx - 6, cy + 1, 2, 2, '#ffffff');
   px(cx + 4, cy + 1, 2, 2, '#ffffff');
+}
+
+function drawGravitos(m, sx, sy) {
+  const cx = sx + m.w/2, cy = sy + m.h/2;
+  const t = game.time;
+  const phase = m.phase || 1;
+  const rim = phase === 1 ? '#8844cc' : phase === 2 ? '#cc44ff' : '#ff44aa';
+  const shell = phase === 1 ? '#6634a8' : phase === 2 ? '#aa3388' : '#cc2266';
+
+  // Outer gravity distortion — concentric flat circles (cheap)
+  const pulse = Math.sin(t * 0.04) * 6;
+  const r0 = m.w * 0.9 + pulse;
+  ctx.fillStyle = rim + '22';
+  ctx.beginPath(); ctx.arc(cx, cy, r0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = rim + '44';
+  ctx.beginPath(); ctx.arc(cx, cy, r0 * 0.72, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = rim + '66';
+  ctx.beginPath(); ctx.arc(cx, cy, r0 * 0.5, 0, Math.PI * 2); ctx.fill();
+
+  // Orbital debris rings (3 spinning elliptical paths)
+  const ringCount = phase === 1 ? 2 : phase === 2 ? 3 : 4;
+  for (let ring = 0; ring < ringCount; ring++) {
+    const tilt = (ring * Math.PI / 5) + t * 0.005;
+    const rot = t * (0.02 + ring * 0.01);
+    const count = 8 + ring * 2;
+    for (let i = 0; i < count; i++) {
+      const a = rot + i * (Math.PI * 2 / count);
+      const rx = m.w * (0.55 + ring * 0.1);
+      const ry = rx * (0.35 + ring * 0.1);
+      const px = cx + Math.cos(a) * rx * Math.cos(tilt) - Math.sin(a) * ry * Math.sin(tilt);
+      const py = cy + Math.cos(a) * rx * Math.sin(tilt) + Math.sin(a) * ry * Math.cos(tilt);
+      ctx.fillStyle = i % 2 ? rim : '#fff';
+      ctx.fillRect(px | 0, py | 0, 3, 3);
+    }
+  }
+
+  // Dark core event horizon
+  const coreR = m.w * 0.3;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(cx, cy, coreR + 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, coreR + 2, 0, Math.PI * 2); ctx.stroke();
+  // Inner shell
+  ctx.fillStyle = shell;
+  const innerR = coreR - 4 + Math.sin(t * 0.08) * 2;
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fill();
+  // Core glint
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx - coreR * 0.25, cy - coreR * 0.25, 3, 0, Math.PI * 2); ctx.fill();
+
+  // Vertical weight aura — occasional downward streaks
+  if (game.time % 4 === 0) {
+    game.particles.push({
+      x: cx + (Math.random() - 0.5) * m.w * 0.6,
+      y: cy - m.h * 0.4,
+      vx: 0, vy: 3 + Math.random() * 2,
+      life: 22, color: rim, size: 2
+    });
+  }
 }
 
 function drawAetherion(m, sx, sy) {
@@ -10235,6 +10470,59 @@ function drawHazards() {
         });
       }
     }
+    else if (h.type === 'blackhole') {
+      // Swirling event horizon that pulls the player in and ticks damage
+      const t = game.time * 0.12;
+      const fade = Math.min(1, h.life / 500);
+      const ccy = h.y + h.h / 2;
+      // Event horizon core
+      ctx.fillStyle = `rgba(0,0,0,${0.92 * fade})`;
+      ctx.beginPath(); ctx.arc(sx, ccy, 36, 0, Math.PI * 2); ctx.fill();
+      // Glowing rim
+      ctx.strokeStyle = `rgba(200,100,255,${0.9 * fade})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(sx, ccy, 38, 0, Math.PI * 2); ctx.stroke();
+      // Accretion disc
+      for (let i = 0; i < 8; i++) {
+        const a = t + i * Math.PI / 4;
+        const r = 55 + Math.sin(t * 2 + i) * 6;
+        ctx.strokeStyle = `rgba(${180 + i * 8},${60 + i * 10},${255},${0.6 * fade})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, ccy, r, a, a + 1.2);
+        ctx.stroke();
+      }
+      // Pull player if close
+      if (player.hp > 0 && player.invulnerable <= 0) {
+        const pcx = player.x + player.w/2, pcy = player.y + player.h/2;
+        const dxp = (h.cx) - pcx, dyp = ccy - pcy;
+        const dist = Math.hypot(dxp, dyp);
+        if (dist < 220) {
+          const force = 0.8 * (1 - dist / 220);
+          player.vx += (dxp / (dist || 1)) * force;
+          player.vy += (dyp / (dist || 1)) * force;
+          if (dist < 50) {
+            // Tick damage every 12 frames at the core
+            if (game.time % 12 === 0) {
+              const dmg = Math.max(1, Math.floor(h.atk - getDef() * 0.5));
+              player.hp -= (player._god ? 0 : dmg);
+              player.invulnerable = 120;
+              game.damageNumbers.push({ x: player.x + 14, y: player.y, vy: -2, text: dmg, life: 32, color: '#cc66ff', size: 13 });
+            }
+          }
+        }
+      }
+      // Inward dust particles
+      if (game.time % 2 === 0) {
+        const a = Math.random() * Math.PI * 2;
+        const r = 90;
+        game.particles.push({
+          x: h.cx + Math.cos(a) * r, y: ccy + Math.sin(a) * r,
+          vx: -Math.cos(a) * 3, vy: -Math.sin(a) * 3,
+          life: 25, color: '#cc88ff', size: 2
+        });
+      }
+    }
     else if (h.type === 'meteor_warn') {
       // Warning circle
       const prog = 1 - h.life / h.maxLife;
@@ -10564,18 +10852,22 @@ function drawSuperBossBar() {
   const hpPct = Math.max(0, sb.currentHp / sb.maxHp);
   const phase = sb.phase || 1;
 
-  // Backdrop plate
-  ctx.fillStyle = 'rgba(10,5,30,0.82)';
+  // Backdrop plate — hyper bosses get a darker/gold-edged plate
+  const hyper = !!sb.hyperBoss;
+  ctx.fillStyle = hyper ? 'rgba(2,0,6,0.92)' : 'rgba(10,5,30,0.82)';
   ctx.fillRect(x - 6, y - 22, barW + 12, barH + 42);
-  ctx.strokeStyle = phase === 1 ? '#b090ff' : phase === 2 ? '#ff88dd' : '#ff4466';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = hyper
+    ? (phase === 1 ? '#aa66ff' : phase === 2 ? '#ff66cc' : '#ffaa44')
+    : (phase === 1 ? '#b090ff' : phase === 2 ? '#ff88dd' : '#ff4466');
+  ctx.lineWidth = hyper ? 3 : 2;
   ctx.strokeRect(x - 6, y - 22, barW + 12, barH + 42);
 
-  // Name + subtitle
+  // Name + subtitle (hyper-boss prefix)
   ctx.fillStyle = phase === 1 ? '#e0c8ff' : phase === 2 ? '#ffaadd' : '#ff7a8e';
   ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(sb.name.toUpperCase(), W / 2, y - 6);
+  const namePrefix = hyper ? '⚠ HYPER BOSS — ' : '';
+  ctx.fillText((namePrefix + sb.name).toUpperCase(), W / 2, y - 6);
 
   // HP bar bg
   ctx.fillStyle = '#1a0a2a';
