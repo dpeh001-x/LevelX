@@ -59,6 +59,25 @@
     cursor: help;
   }
   #version-tag:hover { background: linear-gradient(135deg, rgba(100,60,150,0.95), rgba(60,30,100,0.95)); }
+  #minimap {
+    position: absolute; bottom: 10px; right: 10px;
+    width: 220px; height: 74px;
+    background: rgba(10,10,30,0.72);
+    border: 1px solid #6688bb; border-radius: 6px;
+    padding: 6px;
+    font-size: 10px; color: #ccd8ee;
+    text-shadow: 1px 1px 2px #000;
+  }
+  #minimap-name { font-weight: bold; color: #ffcc66; margin-bottom: 3px; font-size: 11px; }
+  #minimap-canvas { display: block; background: rgba(0,0,0,0.4); border-radius: 3px; }
+  #taxi-btn {
+    position: absolute; bottom: 92px; right: 10px;
+    padding: 5px 10px; background: linear-gradient(135deg, #447799, #335577);
+    border: 1px solid #88bbdd; border-radius: 5px;
+    color: #fff; font-size: 11px; font-weight: bold; cursor: pointer;
+    text-shadow: 1px 1px 2px #000;
+  }
+  #taxi-btn:hover { background: linear-gradient(135deg, #5599bb, #447799); }
   #map-label {
     position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
     background: rgba(20,10,40,0.75); padding: 6px 18px; border-radius: 20px;
@@ -570,6 +589,13 @@
 
   <div id="version-tag" title="LevelX build version — updates with every release">v0.4.0</div>
 
+  <div id="minimap">
+    <div id="minimap-name">—</div>
+    <canvas id="minimap-canvas" width="208" height="50"></canvas>
+  </div>
+
+  <button id="taxi-btn" onclick="openTaxi()" title="Fast travel to any discovered map">🚕 Taxi</button>
+
   <div id="right-ui">
     <div>💎 <span id="mesos">0</span> Lumens</div>
     <div>⚔️ ATK: <span id="atk">12</span></div>
@@ -730,6 +756,20 @@
     </div>
   </div>
 
+  <div id="taxi-modal" class="modal-overlay">
+    <div class="modal" style="position:relative; min-width:580px; max-width:720px;">
+      <button class="close-btn" onclick="closeAllModals()">✕</button>
+      <h2>🚕 Taxi Service</h2>
+      <div style="text-align:center; margin-bottom:8px; color:#bbb; font-size:12px;">
+        Fast-travel to any map you've visited. Fee: 50 Lumens per ride.
+      </div>
+      <div style="text-align:center; margin-bottom:12px;">
+        Lumens: <span class="gold" id="taxi-lumens">0</span>
+      </div>
+      <div id="taxi-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:400px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
   <div id="dev-modal" class="modal-overlay">
     <div class="modal" style="position:relative; min-width:680px; max-width:760px; border:2px solid #ffcc44; background:linear-gradient(160deg,#1a1520,#0a0818);">
       <button class="close-btn" onclick="closeAllModals()">✕</button>
@@ -791,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.8';
+const GAME_VERSION = 'v0.6.0';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1474,6 +1514,10 @@ const monsterTypes = {
   orange:   { name:'Sunback',         w:40, h:42, color:'#ffcc66', shell:'#ff8833', hp:150, atk:22, exp:90,  mesos:42, speed:0.8, jump:3, shoot:'mspore',    shootCd:2600 },
   stump:    { name:'Grumpwood',       w:38, h:44, color:'#8b5a2b', shell:'#5d3a1a', hp:200, atk:26, exp:120, mesos:55, speed:0.4, jump:0, shoot:'msplinter', shootCd:3200 },
   zombie:   { name:'Rotshade',        w:40, h:46, color:'#7a6f88', shell:'#3a2a5a', hp:260, atk:32, exp:160, mesos:75, speed:0.9, jump:4, shoot:'mtoxic',    shootCd:2400 },
+  scorpion: { name:'Dune Scuttler',   w:44, h:30, color:'#d8a048', shell:'#8a5a20', hp:180, atk:24, exp:100, mesos:45, speed:1.4, jump:3 },
+  mummy:    { name:'Duneborn Mummy',  w:38, h:48, color:'#d8c090', shell:'#8a6a40', hp:320, atk:34, exp:170, mesos:80, speed:0.5, jump:0, shoot:'mdark',     shootCd:2800 },
+  skeleton: { name:'Bone Archer',     w:36, h:46, color:'#e8e0d0', shell:'#2a2030', hp:220, atk:28, exp:140, mesos:65, speed:0.7, jump:2, shoot:'msplinter', shootCd:2200 },
+  wraith:   { name:'Pale Wraith',     w:40, h:50, color:'#aaccee', shell:'#3a4a6a', hp:280, atk:36, exp:180, mesos:90, speed:1.1, jump:0, shoot:'mdark',     shootCd:2000 },
   king:     { name:'Gelmonarch',      w:64, h:56, color:'#66ccff', shell:'#3388cc', hp:1200,atk:40, exp:700, mesos:400,speed:0.8, jump:8,  boss:true },
   mushmom:  { name:'Queen Fungara',   w:76, h:86, color:'#f0d8a8', shell:'#aa2244', hp:2500,atk:50, exp:1500,mesos:1000,speed:0.6,jump:6,  boss:true },
   aetherion:{ name:'Aetherion, the Shardfather', w:160, h:160, color:'#7a5aee', shell:'#c8a8ff', hp:18000,atk:90, exp:12000,mesos:8000,speed:0.5,jump:0, boss:true, superBoss:true },
@@ -1659,12 +1703,72 @@ const MAPS = {
     ],
     portals: [
       {x:80,   dest:'town',       name:'◀ Everdawn Village'},
+      {x:1200, dest:'duneSands',  name:'⬇ Dune Sands'},
       {x:2330, dest:'skyGarden',  name:'▶ Sky Garden'},
     ],
     spawns: [
       {type:'snail',  count:7},
       {type:'slime',  count:5},
       {type:'orange', count:3},
+    ],
+  },
+  duneSands: {
+    name:'Dune Sands',
+    sky:['#ffcc88','#ffaa66','#cc7744'],
+    worldWidth: 2600,
+    levelReq: 15,
+    platforms: [
+      {x:0,y:480,w:2600,h:60,type:'ground'},
+      {x:180, y:400,w:160,h:12,type:'platform'},
+      {x:420, y:330,w:160,h:12,type:'platform'},
+      {x:660, y:400,w:160,h:12,type:'platform'},
+      {x:920, y:320,w:160,h:12,type:'platform'},
+      {x:1180,y:380,w:180,h:12,type:'platform'},
+      {x:1440,y:320,w:150,h:12,type:'platform'},
+      {x:1680,y:390,w:160,h:12,type:'platform'},
+      {x:1940,y:320,w:160,h:12,type:'platform'},
+      {x:2200,y:400,w:160,h:12,type:'platform'},
+      {x:340, y:220,w:120,h:12,type:'platform'},
+      {x:1040,y:200,w:120,h:12,type:'platform'},
+      {x:1760,y:210,w:120,h:12,type:'platform'},
+    ],
+    portals: [
+      {x:80,   dest:'sunsetBeach',  name:'◀ Sunset Coast'},
+      {x:2530, dest:'cryptHollow',  name:'▶ Crypt of Whispers'},
+    ],
+    spawns: [
+      {type:'scorpion', count:5},
+      {type:'mummy',    count:3},
+      {type:'slime',    count:2},
+    ],
+  },
+  cryptHollow: {
+    name:'Crypt of Whispers',
+    sky:['#1a1028','#2a1838','#4a2855'],
+    worldWidth: 2400,
+    levelReq: 22,
+    platforms: [
+      {x:0,y:480,w:2400,h:60,type:'ground'},
+      {x:160, y:390,w:180,h:12,type:'platform'},
+      {x:420, y:330,w:160,h:12,type:'platform'},
+      {x:660, y:390,w:180,h:12,type:'platform'},
+      {x:920, y:310,w:140,h:12,type:'platform'},
+      {x:1180,y:380,w:180,h:12,type:'platform'},
+      {x:1420,y:310,w:160,h:12,type:'platform'},
+      {x:1680,y:390,w:180,h:12,type:'platform'},
+      {x:1940,y:320,w:160,h:12,type:'platform'},
+      {x:320, y:220,w:140,h:12,type:'platform'},
+      {x:900, y:200,w:140,h:12,type:'platform'},
+      {x:1500,y:220,w:140,h:12,type:'platform'},
+    ],
+    portals: [
+      {x:80,   dest:'duneSands', name:'◀ Dune Sands'},
+      {x:2320, dest:'frozenPeak',name:'▶ Frozen Peak'},
+    ],
+    spawns: [
+      {type:'skeleton', count:4},
+      {type:'wraith',   count:3},
+      {type:'zombie',   count:3},
     ],
   },
   skyGarden: {
@@ -2440,6 +2544,9 @@ function buildBackdrop() {
 function loadMap(id, entryX) {
   // Reset per-map milestone flags
   player._miracleUsedThisMap = false;
+  // Track visited maps for the taxi system
+  if (!game.visitedMaps) game.visitedMaps = {};
+  game.visitedMaps[id] = true;
   game.currentMap = id;
   game.mapData = MAPS[id];
   game.monsters = [];
@@ -6676,6 +6783,123 @@ function openDevConsole() {
   game.paused = true;
 }
 
+// =========================================================================
+// MINIMAP
+// =========================================================================
+function drawMinimap() {
+  const canvas = document.getElementById('minimap-canvas');
+  if (!canvas || !game.mapData) return;
+  const mctx = canvas.getContext('2d');
+  const mw = canvas.width, mh = canvas.height;
+  mctx.clearRect(0, 0, mw, mh);
+  const worldW = game.mapData.worldWidth || 2000;
+  const scaleX = mw / worldW;
+  // Ground line
+  mctx.fillStyle = 'rgba(80,120,80,0.5)';
+  mctx.fillRect(0, mh - 10, mw, 3);
+  // Platforms
+  mctx.fillStyle = 'rgba(160,180,200,0.7)';
+  for (const p of game.mapData.platforms || []) {
+    if (p.type === 'ground') continue;
+    const px = p.x * scaleX;
+    const pw = Math.max(2, p.w * scaleX);
+    const py = (p.y / 540) * mh;
+    mctx.fillRect(px, py, pw, 2);
+  }
+  // Portals (yellow)
+  mctx.fillStyle = '#ffcc44';
+  for (const po of game.mapData.portals || []) {
+    const px = po.x * scaleX;
+    mctx.fillRect(px - 2, mh - 14, 4, 10);
+  }
+  // Monsters (red / orange for bosses)
+  for (const m of game.monsters) {
+    if (m.currentHp <= 0) continue;
+    const mx = (m.x + m.w/2) * scaleX;
+    const my = (m.y / 540) * mh;
+    mctx.fillStyle = m.isBoss ? '#ff4466' : (m.isMiniBoss ? '#ff8844' : '#cc5544');
+    const s = m.isBoss ? 4 : 2;
+    mctx.fillRect(mx - s/2, my - s/2, s, s);
+  }
+  // Player (green, larger)
+  const px = (player.x + player.w/2) * scaleX;
+  const py = (player.y / 540) * mh;
+  mctx.fillStyle = '#66ff88';
+  mctx.fillRect(px - 2, py - 2, 4, 4);
+  // Camera window frame
+  mctx.strokeStyle = 'rgba(200,220,255,0.35)';
+  mctx.lineWidth = 1;
+  mctx.strokeRect(game.camera.x * scaleX, 0, W * scaleX, mh);
+  // Map name
+  const nameEl = document.getElementById('minimap-name');
+  if (nameEl) nameEl.textContent = game.mapData.name || '—';
+}
+
+// =========================================================================
+// TAXI / FAST-TRAVEL
+// =========================================================================
+const TAXI_FEE = 50;
+function openTaxi() {
+  if (!player.cls) { showToast('Pick a class first', 'common'); return; }
+  if (game.paused || player.hp <= 0) return;
+  // Block from inside boss arenas — enforce earning the fight
+  if (game.mapData && game.mapData.isBossArena) {
+    showToast('Cannot taxi from a boss arena', 'rare');
+    return;
+  }
+  renderTaxi();
+  document.getElementById('taxi-modal').style.display = 'flex';
+  game.paused = true;
+}
+function renderTaxi() {
+  document.getElementById('taxi-lumens').textContent = player.mesos;
+  const grid = document.getElementById('taxi-grid');
+  grid.innerHTML = '';
+  if (!game.visitedMaps) game.visitedMaps = {};
+  game.visitedMaps[game.currentMap] = true;
+  const visited = Object.keys(game.visitedMaps).filter(id => MAPS[id] && !MAPS[id].isBossArena);
+  if (!visited.length) {
+    grid.innerHTML = '<div style="color:#bbb; text-align:center; padding:10px;">No maps discovered yet — explore the world first.</div>';
+    return;
+  }
+  for (const id of visited) {
+    const M = MAPS[id];
+    const here = id === game.currentMap;
+    const canAfford = player.mesos >= TAXI_FEE;
+    const meetLvl = !M.levelReq || player.level >= M.levelReq;
+    const disabled = here || !canAfford || !meetLvl;
+    const card = document.createElement('div');
+    card.style.cssText = `
+      padding: 10px; border-radius: 6px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid ${here ? '#66ff88' : (disabled ? '#555' : '#88bbdd')};
+      cursor: ${disabled ? 'not-allowed' : 'pointer'};
+      opacity: ${disabled ? 0.5 : 1};
+      transition: background 0.15s;
+    `;
+    card.innerHTML = `
+      <div style="font-weight:bold; color:${here ? '#66ff88' : '#fff'}; font-size:13px;">
+        ${here ? '📍 ' : ''}${M.name}
+      </div>
+      <div style="font-size:11px; color:#999; margin-top:3px;">
+        ${M.levelReq ? `Lv ${M.levelReq}+ · ` : ''}${here ? 'You are here' : (canAfford && meetLvl ? `Fare: ${TAXI_FEE}💰` : (!canAfford ? 'Need 50💰' : `Requires Lv ${M.levelReq}`))}
+      </div>
+    `;
+    if (!disabled) {
+      card.onmouseenter = () => card.style.background = 'rgba(68,120,180,0.4)';
+      card.onmouseleave = () => card.style.background = 'rgba(0,0,0,0.35)';
+      card.onclick = () => {
+        player.mesos -= TAXI_FEE;
+        closeAllModals();
+        loadMap(id, 200);
+        player.x = 200; player.y = 400; player.vx = 0; player.vy = 0;
+        showToast(`Arrived at ${M.name}!`, 'epic');
+      };
+    }
+    grid.appendChild(card);
+  }
+}
+
 function openSkillsModal() {
   const list = document.getElementById('skills-list');
   list.innerHTML = '';
@@ -6921,7 +7145,7 @@ function closeAllModals() {
   const cs = document.getElementById('class-select-modal');
   const av = document.getElementById('advancement-modal');
   if (cs.style.display === 'flex' || av.style.display === 'flex') return;
-  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal','attributes-modal','dev-modal']) {
+  for (const id of ['shop-modal','inventory-modal','skills-modal','powerup-modal','help-modal','enhance-modal','skilltree-modal','attributes-modal','dev-modal','taxi-modal']) {
     document.getElementById(id).style.display = 'none';
   }
   document.getElementById('dialog').style.display = 'none';
@@ -8403,6 +8627,8 @@ function drawMonster(m) {
   else if (m.type === 'horny') drawHorny(m, sx, sy);
   else if (m.type === 'stump') drawStump(m, sx, sy);
   else if (m.type === 'zombie') drawZombie(m, sx, sy);
+  else if (m.type === 'mummy' || m.type === 'skeleton' || m.type === 'wraith') drawZombie(m, sx, sy);
+  else if (m.type === 'scorpion') drawSlime(m, sx, sy);
   else if (m.type === 'king') drawKingSlime(m, sx, sy);
   else if (m.type === 'mushmom') drawMushmom(m, sx, sy);
   else if (m.type === 'aetherion') drawAetherion(m, sx, sy);
@@ -10096,6 +10322,8 @@ function loop(time) {
 
   // Super-boss HP banner
   drawSuperBossBar();
+  // Update minimap (DOM-side, every few frames to avoid overhead)
+  if (game.time % 4 === 0) drawMinimap();
 
   // Flash overlay
   if (game.flashOverlay > 0) {
