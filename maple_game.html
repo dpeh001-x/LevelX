@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.6.2';
+const GAME_VERSION = 'v0.6.3';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -2400,24 +2400,68 @@ function quickDash(dir) {
   });
 }
 
+// Per-class Z defence profile — timing widths shift the tradeoff between safety and skill
+function getBlockProfile() {
+  switch (player.cls) {
+    case 'warrior': // lenient — tanky shield stance
+      return { block: 700, parry: 320, cd: 1800, color:'#ffdd88', label:'SHIELD', accent:'#ffbb55' };
+    case 'rogue':   // strict — quick backstep evade
+      return { block: 300, parry: 110, cd: 2500, color:'#cc88ff', label:'EVADE',  accent:'#aa44ff' };
+    case 'mage':    // strict — brief vanish
+      return { block: 320, parry: 120, cd: 2500, color:'#aaccff', label:'VANISH', accent:'#6688ff' };
+    case 'archer':  // moderate — back roll with parry
+      return { block: 450, parry: 180, cd: 2200, color:'#88ffcc', label:'ROLL',   accent:'#44bb99' };
+    default:
+      return { block: 500, parry: 200, cd: 2000, color:'#88ccff', label:'BLOCK',  accent:'#3388ff' };
+  }
+}
+
 function startBlock() {
-  player.blockTimer = 500;     // total block duration
-  player.parryWindow = 200;    // first 200ms = parry
-  player.blockCD = 2000;       // 2s cooldown
-  player.vx *= 0.3;
-  // Shield puff particles
+  const P = getBlockProfile();
+  player.blockTimer = P.block;
+  player.parryWindow = P.parry;
+  player.blockCD = P.cd;
+  player._blockProfile = P;
+  // Class-specific movement on cast
+  if (player.cls === 'rogue') {
+    // Shadow backstep
+    player.vx = -player.facing * 9;
+    player.invulnerable = Math.max(player.invulnerable, 200);
+    for (let k = 0; k < 6; k++) {
+      game.afterImages.push({
+        x: player.x - k * player.facing * 6, y: player.y,
+        facing: player.facing, state:'attack',
+        life: 14, maxLife: 14,
+        color: `rgba(200,140,255,${0.5 - k * 0.08})`,
+      });
+    }
+  } else if (player.cls === 'mage') {
+    // Vanish — brief full invul puff
+    player.invulnerable = Math.max(player.invulnerable, P.block);
+    player.vx *= 0.3;
+  } else if (player.cls === 'archer') {
+    // Short back-roll
+    player.vx = -player.facing * 5;
+    player.vy = Math.min(player.vy, -2);
+    player.invulnerable = Math.max(player.invulnerable, 200);
+  } else {
+    // Warrior — plant and brace
+    player.vx *= 0.1;
+  }
+  // Burst particles themed by class
   for (let i = 0; i < 14; i++) {
     const a = (i / 14) * Math.PI * 2;
     game.particles.push({
       x: player.x + player.w/2 + Math.cos(a) * 12,
       y: player.y + player.h/2 + Math.sin(a) * 12,
       vx: Math.cos(a) * 0.8, vy: Math.sin(a) * 0.8,
-      life: 18, color: '#ffdd88', size: 2
+      life: 18, color: P.color, size: 2
     });
   }
 }
 
 function triggerParry(source) {
+  const P = player._blockProfile || { color:'#ffdd44', accent:'#ffdd44' };
   // Fully negate damage, brief i-frames, stun attacker, refund some MP
   player.invulnerable = Math.max(player.invulnerable, 350);
   player.mp = Math.min(getMaxMp(), player.mp + 15);
@@ -2428,14 +2472,14 @@ function triggerParry(source) {
   addShake(5); flash(0.4); addHitStop(80);
   game.damageNumbers.push({
     x: player.x + player.w/2 - 20, y: player.y - 6, vy: -2,
-    text: 'PARRY!', life: 50, color: '#ffdd44', size: 18
+    text: 'PARRY!', life: 50, color: P.color, size: 18
   });
   for (let i = 0; i < 24; i++) {
     const a = (i / 24) * Math.PI * 2;
     game.particles.push({
       x: player.x + player.w/2, y: player.y + player.h/2,
       vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
-      life: 26, color: i % 2 ? '#ffee66' : '#fff', size: 3
+      life: 26, color: i % 2 ? P.accent : '#fff', size: 3
     });
   }
   // Stun the attacker if it's a monster
@@ -2443,20 +2487,32 @@ function triggerParry(source) {
     source.stunTimer = Math.max(source.stunTimer || 0, 900);
     source.vx = -((source.x + source.w/2) - (player.x + player.w/2)) * 0.05;
   }
+  // Class-specific parry reward
+  if (player.cls === 'rogue' && source && source.currentHp !== undefined) {
+    hitMonster(source, Math.floor(getAtk() * 1.6), true, 'melee');
+  } else if (player.cls === 'archer') {
+    player._nextShotBonus = 3000;       // next shot gets massive crit
+    showToast('PARRY — next shot empowered!', 'legendary');
+    return;
+  } else if (player.cls === 'mage') {
+    player.hitStun = 0;
+    player.burnTimer = 0; player.freezeTimer = 0; player.stunTimer = 0;
+  }
   showToast('PARRY!', 'legendary');
 }
 
 function triggerBlock() {
+  const P = player._blockProfile || { color:'#88ccff' };
   addShake(2); flash(0.12);
   game.damageNumbers.push({
     x: player.x + player.w/2 - 16, y: player.y - 6, vy: -2,
-    text: 'BLOCK', life: 32, color: '#88ccff', size: 14
+    text: (P.label || 'BLOCK'), life: 32, color: P.color, size: 14
   });
   for (let i = 0; i < 10; i++) {
     game.particles.push({
       x: player.x + player.w/2, y: player.y + player.h/2,
       vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
-      life: 18, color: '#aaddff', size: 2
+      life: 18, color: P.color, size: 2
     });
   }
 }
@@ -3371,6 +3427,11 @@ function updatePlayer(dt) {
     player._spellEcho -= dt;
     if (player._spellEcho < 0) player._spellEcho = 0;
   }
+  // Archer parry empowerment — tick down
+  if (player._nextShotBonus > 0) {
+    player._nextShotBonus -= dt;
+    if (player._nextShotBonus < 0) player._nextShotBonus = 0;
+  }
   // Milestone: Afterimage — top-speed sprint spawns ghost copies that damage enemies they pass
   if (hasMilestone('afterimage')) {
     const moving = Math.abs(player.vx) > 5 || player.quickDashTimer > 0 || player.dodgeTimer > 0;
@@ -3489,6 +3550,14 @@ function castSkill(id) {
   player.attacking = true;
   // Warrior basic — heavier, longer swing animation; rogue — quick flick
   player.attackTimer = (id === 'slash') ? 360 : (id === 'stab') ? 180 : 260;
+  // Rogues get fluid skill-linking — every cast clears prior action locks so moves flow into each other
+  if (player.cls === 'rogue') {
+    player.rushTimer = 0;
+    player.dodgeTimer = 0;
+    player.quickDashTimer = 0;
+    player.smokeLock = 0;
+    player.attackTimer = Math.min(player.attackTimer, 140);
+  }
   player.state = 'attack';
   const f = SKILL_FNS[id];
   if (f) f();
@@ -3553,74 +3622,116 @@ const SKILL_FNS = {
     }, 180);
   },
   groundSlam: () => {
-    // Overhead smash — leap up high, then crash down with a big front-facing slam (no projectiles)
-    addShake(4); flash(0.14);
-    player.vy = -12;                 // big leap up
-    player.invulnerable = Math.max(player.invulnerable, 600);
-    // Leap trail
-    for (let i = 0; i < 8; i++) {
+    // Slow dramatic overhead — telegraph rings, pause at apex, then crash
+    addShake(3); flash(0.12);
+    player.vy = -13;                  // strong leap up
+    player.invulnerable = Math.max(player.invulnerable, 1100);
+    // Launch burst — ground debris ring
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
       game.particles.push({
-        x: player.x + player.w/2 + (Math.random()-0.5)*10,
-        y: player.y + player.h - 2,
-        vx: (Math.random()-0.5) * 2,
-        vy: 1 + Math.random(),
-        life: 16, color: '#ccdddd', size: 2
+        x: player.x + player.w/2, y: player.y + player.h - 2,
+        vx: Math.cos(a) * 4, vy: Math.sin(a) * 2 - 1,
+        life: 28, color: i % 2 ? '#ccdddd' : '#88aabb', size: 3
       });
     }
+    // Apex hang — spin charge particles swirling around player while airborne
+    for (let k = 0; k < 5; k++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        // Continue floating near apex by capping vy
+        if (player.vy > -1) player.vy = -1;
+        // Charge rings swirling inward
+        const t = k * 0.7;
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + t;
+          const r = 42 - k * 5;
+          game.particles.push({
+            x: player.x + player.w/2 + Math.cos(a) * r,
+            y: player.y + player.h/2 + Math.sin(a) * r,
+            vx: -Math.cos(a) * 2, vy: -Math.sin(a) * 2,
+            life: 20, color: k === 4 ? '#fff' : (i % 2 ? '#ffccaa' : '#ff9966'), size: 3
+          });
+        }
+        addShake(1);
+      }, 180 + k * 90);
+    }
+    // Dive phase — forceful slam downward
     setTimeout(() => {
       if (player.hp <= 0 || game.paused) return;
-      player.vy = 18;                // slam down hard
-      // Afterimage of the dive
-      game.afterImages.push({
-        x: player.x, y: player.y, facing: player.facing,
-        state:'attack', life: 20, maxLife: 20,
-        color: 'rgba(200,220,240,0.5)',
-      });
-    }, 260);
-    // Big impact when approximately landed — big front smash
+      player.vy = 22;                 // steeper slam
+      flash(0.18);
+      // Afterimages streaking down
+      for (let k = 0; k < 4; k++) {
+        setTimeout(() => {
+          game.afterImages.push({
+            x: player.x, y: player.y, facing: player.facing,
+            state:'attack', life: 22, maxLife: 22,
+            color: `rgba(255,210,140,${0.55 - k * 0.1})`,
+          });
+        }, k * 40);
+      }
+    }, 700);
+    // Impact — wide front smash with triple shockwave ring burst
     setTimeout(() => {
       if (player.hp <= 0 || game.paused) return;
-      addShake(14); flash(0.35); addHitStop(90);
-      // Wide front-facing smash hitbox
-      const reach = 200;
+      addShake(18); flash(0.45); addHitStop(130);
+      const reach = 220;
       const hitbox = {
         x: player.facing > 0 ? player.x + player.w - 10 : player.x - reach + 10,
         y: player.y + 10,
         w: reach,
-        h: player.h + 40,
+        h: player.h + 50,
       };
       for (const m of game.monsters) {
         if (m.currentHp <= 0) continue;
         if (aabb(hitbox, m)) {
           const crit = rollCrit();
-          const dmg = Math.floor((getAtk() * 2.1 + Math.random() * 10) * (crit ? getCritDmg() : 1));
+          const dmg = Math.floor((getAtk() * 2.3 + Math.random() * 12) * (crit ? getCritDmg() : 1));
           hitMonster(m, dmg, crit, 'melee');
-          m.vx += player.facing * 8;
-          m.vy -= 3;
-          m.stunTimer = Math.max(m.stunTimer || 0, 600);
+          m.vx += player.facing * 10;
+          m.vy -= 4;
+          m.stunTimer = Math.max(m.stunTimer || 0, 750);
         }
       }
-      // Big front impact burst — sand + debris
-      for (let i = 0; i < 30; i++) {
-        const spread = (Math.random() - 0.3) * Math.PI;
+      // Impact debris cone (front-facing)
+      for (let i = 0; i < 50; i++) {
         game.particles.push({
-          x: player.x + player.w/2 + player.facing * (20 + Math.random() * 80),
-          y: player.y + player.h - Math.random() * 10,
-          vx: player.facing * (2 + Math.random() * 5),
-          vy: -3 - Math.random() * 4,
-          life: 32, color: i % 2 ? '#ccdddd' : '#888899', size: 3
+          x: player.x + player.w/2 + player.facing * (20 + Math.random() * 120),
+          y: player.y + player.h - Math.random() * 12,
+          vx: player.facing * (2 + Math.random() * 6),
+          vy: -4 - Math.random() * 5,
+          life: 38, color: i % 3 === 0 ? '#ffcc66' : (i % 2 ? '#ccdddd' : '#888899'), size: 3
         });
       }
-      // Radial shockwave ring FX (visual only — no traveling projectile)
-      for (let i = 0; i < 22; i++) {
-        const a = (i / 22) * Math.PI * 2;
-        game.particles.push({
-          x: player.x + player.w/2, y: player.y + player.h - 4,
-          vx: Math.cos(a) * 6, vy: Math.sin(a) * 3,
-          life: 22, color: '#eef0f4', size: 3
-        });
+      // Triple radial shockwave ring, each a slightly different color/speed
+      const ringColors = ['#ffffff', '#ffddaa', '#ffaa55'];
+      for (let r = 0; r < 3; r++) {
+        setTimeout(() => {
+          for (let i = 0; i < 28; i++) {
+            const a = (i / 28) * Math.PI * 2;
+            game.particles.push({
+              x: player.x + player.w/2, y: player.y + player.h - 4,
+              vx: Math.cos(a) * (8 + r * 2), vy: Math.sin(a) * (4 + r),
+              life: 26, color: ringColors[r], size: 3
+            });
+          }
+        }, r * 60);
       }
-    }, 520);
+      // Crack pillars — vertical debris columns in front
+      for (let col = 0; col < 4; col++) {
+        const cx = player.x + player.w/2 + player.facing * (40 + col * 48);
+        for (let i = 0; i < 6; i++) {
+          game.particles.push({
+            x: cx + (Math.random()-0.5) * 12,
+            y: player.y + player.h,
+            vx: (Math.random()-0.5) * 1.5,
+            vy: -6 - Math.random() * 5,
+            life: 34, color: i % 2 ? '#cca26a' : '#8a6040', size: 3
+          });
+        }
+      }
+    }, 1000);
   },
   rush: () => {
     // Shorter dash + i-frames + fire trail DoT + afterimage contrail
@@ -3818,7 +3929,7 @@ const SKILL_FNS = {
           color: `rgba(180,60,220,${0.5 - t * 0.3})`,
         });
       }
-      hitMonster(tgt, Math.floor(getAtk() * 2.6), true, 'backstab');
+      hitMonster(tgt, Math.floor(getAtk() * 2.1), true, 'backstab');
       // Blood burst
       for (let i = 0; i < 20; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -3879,7 +3990,7 @@ const SKILL_FNS = {
       const mid = m.x + m.w/2;
       const a = Math.min(startX, tx), b = Math.max(startX, tx);
       if (mid > a - 20 && mid < b + 20) {
-        hitMonster(m, Math.floor(getAtk() * 1.9), rollCrit(), 'smokeDash');
+        hitMonster(m, Math.floor(getAtk() * 1.5), rollCrit(), 'smokeDash');
       }
     }
     // Afterimage trail
@@ -3959,7 +4070,7 @@ const SKILL_FNS = {
           if (m.currentHp <= 0) continue;
           if (aabb(hitbox, m)) {
             const crit = rollCrit();
-            const dmg = Math.floor((getAtk() * 0.9 + Math.random() * 6) * (crit ? getCritDmg() : 1));
+            const dmg = Math.floor((getAtk() * 0.65 + Math.random() * 4) * (crit ? getCritDmg() : 1));
             hitMonster(m, dmg, crit, 'melee');
             m.vx += player.facing * 5;
             m.vy -= 1.5;                // slight lift, not slam
@@ -4014,7 +4125,7 @@ const SKILL_FNS = {
           color: `rgba(80,20,140,${0.7 - t * 0.4})`,
         });
       }
-      hitMonster(tgt, Math.floor(getAtk() * 2.4), true, 'shadowStrike');
+      hitMonster(tgt, Math.floor(getAtk() * 1.9), true, 'shadowStrike');
       for (let i = 0; i < 16; i++) {
         const a = Math.random() * Math.PI * 2;
         game.particles.push({
@@ -4039,7 +4150,7 @@ const SKILL_FNS = {
         for (const m of game.monsters) {
           if (m.currentHp <= 0) continue;
           const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
-          if (d < radius) hitMonster(m, Math.floor(getAtk() * 1.5), rollCrit(), 'deathBlossom');
+          if (d < radius) hitMonster(m, Math.floor(getAtk() * 1.15), rollCrit(), 'deathBlossom');
         }
         // Rotating petal ring
         const ringCount = 20 + w * 6;
@@ -4121,7 +4232,7 @@ const SKILL_FNS = {
         }
         const steal = Math.floor(tgt.mesos * 0.5);
         stolen += steal;
-        hitMonster(tgt, Math.floor(getAtk() * 1.4), true, 'sleight');
+        hitMonster(tgt, Math.floor(getAtk() * 1.1), true, 'sleight');
         // Gold coin burst
         for (let j = 0; j < 14; j++) {
           const a = Math.random() * Math.PI * 2;
@@ -4151,10 +4262,12 @@ const SKILL_FNS = {
   // Mage
   magicBolt: () => performBolt(),
   fireball: () => {
+    // Horizontal, no gravity, flies ~300px, then detonates mid-air in a big AoE
     game.projectiles.push({
       x: player.x + (player.facing > 0 ? player.w : -24), y: player.y + 18,
-      vx: player.facing * 7, vy: 0, w: 24, h: 20, life: 65,
-      damage: getAtk() * 2.8 + 15, owner: 'player', skill: 'fire', explode: 60,
+      vx: player.facing * 10, vy: 0, w: 28, h: 22, life: 32,
+      damage: getAtk() * 2.5 + 15, owner: 'player', skill: 'fire', explode: 90,
+      selfExplode: true, noGravity: true,
       color: '#ff8822', _enh: player._enh,
     });
   },
@@ -4277,14 +4390,12 @@ const SKILL_FNS = {
     player.x = tx;
     player.vy = -4;
     player.invulnerable = Math.max(player.invulnerable, 350);
-    // Fire 2 arrows along the aim angle — short range, gravity-free so aim stays true
-    const { cosA, sinA } = getArcherAim();
-    const speed = 14;
+    // Fire 2 arrows flat horizontal — always 0° to floor, short distance, ignores aim
     for (let i = 0; i < 2; i++) {
       game.projectiles.push({
         x: player.x + (player.facing > 0 ? player.w : -18),
         y: player.y + 12 + i * 8,
-        vx: player.facing * speed * cosA, vy: sinA * speed,
+        vx: player.facing * 14, vy: 0,
         w: 20, h: 6, life: 22,
         damage: getAtk() * 1.2, owner: 'player', skill: 'arrow', color: '#ffdd88',
         noGravity: true,
@@ -5328,6 +5439,16 @@ function bossAI(m, dt, distToPlayer) {
 function hitMonster(m, dmg, isCrit, skill) {
   // Dev cheat — one-shot kills anything
   if (player._oneShot) dmg = 999999;
+  // Archer parry reward — next projectile hit gets massive damage + crit
+  if (player._nextShotBonus > 0 && (skill === 'arrow' || skill === 'charged' || skill === 'deadeye')) {
+    dmg = Math.floor(dmg * 2.5);
+    isCrit = true;
+    player._nextShotBonus = 0;
+    game.damageNumbers.push({
+      x: m.x + m.w/2 - 20, y: m.y - 8, vy: -2,
+      text: 'EMPOWERED!', life: 40, color: '#88ffcc', size: 16
+    });
+  }
   // Tag for Mana Font milestone — track if the killing blow was a skill
   m._killedBySkill = skill !== 'melee' && skill !== 'thorns' && skill !== undefined;
   // Milestone: Overload — +40% spell damage
@@ -6061,6 +6182,29 @@ function updateProjectiles(dt) {
       }
     }
 
+    // Self-exploding projectiles (fireball etc.) detonate at end of life
+    if (!hit && p.life <= 0 && p.selfExplode && p.explode && p.owner === 'player') {
+      for (const m2 of game.monsters) {
+        if (m2.currentHp <= 0) continue;
+        const dx = (m2.x + m2.w/2) - (p.x + p.w/2);
+        const dy = (m2.y + m2.h/2) - (p.y + p.h/2);
+        if (dx*dx + dy*dy < p.explode * p.explode) {
+          const crit = rollCrit();
+          const d = Math.floor(p.damage * (crit ? getCritDmg() : 1));
+          hitMonster(m2, d, crit, p.skill);
+        }
+      }
+      for (let j = 0; j < 36; j++) {
+        const a = (j/36) * Math.PI * 2;
+        game.particles.push({
+          x: p.x + p.w/2, y: p.y + p.h/2,
+          vx: Math.cos(a) * (3 + Math.random() * 4),
+          vy: Math.sin(a) * (3 + Math.random() * 4),
+          life: 32, color: p.color || '#ff8844', size: 3 + Math.random() * 3
+        });
+      }
+      addShake(6); flash(0.22);
+    }
     if (hit || p.life <= 0 || p.x < 0 || p.x > game.mapData.worldWidth || p.y > H + 50) {
       game.projectiles.splice(i, 1);
     }
@@ -8276,7 +8420,8 @@ function drawPlayer() {
     const t = game.time * 0.2;
     const isParry = player.parryWindow > 0;
     const r = player.w * (isParry ? 1.0 : 0.9) + Math.sin(t) * 1.5;
-    const color = isParry ? '#ffee66' : '#88ccff';
+    const P = player._blockProfile || { color:'#88ccff', accent:'#ffee66' };
+    const color = isParry ? P.accent : P.color;
     // Outer aura
     ctx.fillStyle = color + '33';
     ctx.beginPath(); ctx.arc(cxb, cyb, r + 4, 0, Math.PI * 2); ctx.fill();
