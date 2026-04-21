@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.3';
+const GAME_VERSION = 'v0.5.4';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1903,7 +1903,7 @@ function getAtk()  {
   const primaryBonus = Math.floor(attrEff(primary) * 0.8);
   const base = player.baseAtk + player.mods.atk + getEquipBonus('atk') + primaryBonus;
   let pct = 1 + player.mods.atkPct + (getEquipBonus('atkPct') || 0) + (player.inRage ? 0.3 : 0);
-  if (player.buffs.warCry > 0)   pct += 0.5;
+  if (player.buffs.warCry > 0)   pct += 0.55;
   if (player.buffs.bloodlust > 0) pct += 0.4;
   if (player.buffs.rampage > 0)   pct += 0.8;
   // Berserker passive: +% ATK below HP threshold
@@ -1927,6 +1927,7 @@ function getAtk()  {
 }
 function getDef()  {
   let d = player.baseDef + player.mods.def + getEquipBonus('def') + Math.floor(attrEff(attr('vit')) * 0.5);
+  if (player.buffs.warCry > 0)   d = Math.floor(d * 1.25);
   if (player.buffs.guardian > 0) d = Math.floor(d * 1.5 + 40);
   if (player.buffs.holyShield > 0) d += 9999;
   // Milestone: Second Wind — +80% DEF for 10s when HP<20%, triggered once per 2min
@@ -3379,17 +3380,239 @@ function castSkill(id) {
 // ============ Skill implementations ============
 const SKILL_FNS = {
   // Warrior
-  slash: () => performMelee(160, 1.55, { color:'#fff', kb:5, burst:14 }),
-  powerStrike: () => { addShake(3); performMelee(140, 2.2, { color:'#ffaa66', kb:6, vy:-2, stun:400, burst:20 }); },
-  groundSlam: () => { addShake(6); performAround(100, 1.5, { color:'#ccdddd', kb:4 }); },
-  rush: () => { player.rushTimer = 320; player.rushDir = player.facing; player.invulnerable = Math.max(player.invulnerable, 320); addShake(3); },
-  warCry: () => { player.buffs.warCry = 6000; showToast('War Cry! +50% ATK', 'epic'); for (let i=0;i<24;i++){ const a=(i/24)*Math.PI*2; game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:Math.cos(a)*5,vy:Math.sin(a)*3,life:30,color:'#ffcc44',size:3}); } for (const m of game.monsters) { if (Math.abs(m.x-player.x)<300) m.aggroTarget = player; } addShake(4); },
+  slash: () => {
+    // Crescent arc slash
+    performMelee(160, 1.55, { color:'#fff', kb:5, burst:14 });
+    const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    for (let i = 0; i < 10; i++) {
+      const t = i / 10;
+      const ang = -Math.PI/3 + t * (Math.PI * 2/3);
+      game.particles.push({
+        x: cx + Math.cos(ang) * 60 * player.facing,
+        y: cy + Math.sin(ang) * 40,
+        vx: player.facing * (3 + Math.random() * 2),
+        vy: Math.sin(ang) * 2,
+        life: 18, color: '#ffffff', size: 2
+      });
+    }
+  },
+  powerStrike: () => {
+    // Overhead smash + forward shockwave projectile that carries the hit further
+    addShake(5); flash(0.2);
+    performMelee(150, 2.4, { color:'#ffaa66', kb:8, vy:-3, stun:500, burst:24 });
+    // Shockwave projectile travels 160px
+    game.projectiles.push({
+      x: player.x + (player.facing > 0 ? player.w : -30),
+      y: player.y + 24,
+      vx: player.facing * 10, vy: 0,
+      w: 32, h: 22, life: 24,
+      damage: getAtk() * 1.2 + 6,
+      owner: 'player', skill: 'shock', color:'#ffaa66',
+    });
+    // Impact ground dust
+    for (let i = 0; i < 14; i++) {
+      game.particles.push({
+        x: player.x + player.w/2 + player.facing * (20 + Math.random() * 40),
+        y: player.y + player.h - Math.random() * 6,
+        vx: player.facing * (2 + Math.random() * 3),
+        vy: -1 - Math.random() * 2,
+        life: 22, color: i % 2 ? '#d8b080' : '#a8805a', size: 3
+      });
+    }
+  },
+  groundSlam: () => {
+    // Leap-up-then-slam — hop, AoE, spawn 2 traveling shockwaves
+    addShake(8); flash(0.22);
+    player.vy = Math.min(player.vy, -6);
+    setTimeout(() => {
+      if (player.hp <= 0 || game.paused) return;
+      player.vy = 10;                // slam down
+      performAround(140, 1.8, { color:'#ccdddd', kb:6 });
+      // Traveling shockwaves left + right
+      for (const dir of [-1, 1]) {
+        game.projectiles.push({
+          x: player.x + player.w/2,
+          y: player.y + player.h - 6,
+          vx: dir * 7, vy: 0,
+          w: 24, h: 18, life: 40,
+          damage: getAtk() * 1.1 + 4,
+          owner: 'player', skill: 'shock', color:'#ccdddd', pierce: true,
+        });
+      }
+      // Ground crack dust
+      for (let i = 0; i < 24; i++) {
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        game.particles.push({
+          x: player.x + player.w/2 + dir * (10 + Math.random() * 80),
+          y: player.y + player.h - Math.random() * 8,
+          vx: dir * (2 + Math.random() * 3),
+          vy: -2 - Math.random() * 3,
+          life: 26, color: i % 2 ? '#ccdddd' : '#888899', size: 3
+        });
+      }
+      addShake(10);
+    }, 180);
+  },
+  rush: () => {
+    // Longer rush + i-frames + fire trail DoT + brief +ATK buff on connect
+    player.rushTimer = 440;
+    player.rushDir = player.facing;
+    player.invulnerable = Math.max(player.invulnerable, 440);
+    addShake(4); flash(0.15);
+    // Schedule trail particles + lingering fire damage ticks
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        const cx = player.x + player.w/2, cy = player.y + player.h/2;
+        // Damage tick along current position
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          if (Math.abs((m.x + m.w/2) - cx) < 60 && Math.abs(m.y - player.y) < 60) {
+            hitMonster(m, Math.floor(getAtk() * 0.4), false, 'rush');
+          }
+        }
+        for (let k = 0; k < 5; k++) {
+          game.particles.push({
+            x: cx + (Math.random() - 0.5) * 30,
+            y: cy + (Math.random() - 0.5) * 20,
+            vx: -player.facing * (1 + Math.random()),
+            vy: -1 - Math.random(),
+            life: 20, color: k % 2 ? '#ff7733' : '#ffcc44', size: 3
+          });
+        }
+      }, i * 50);
+    }
+    // Afterimage trail
+    for (let k = 0; k < 6; k++) {
+      setTimeout(() => {
+        game.afterImages.push({
+          x: player.x, y: player.y, facing: player.facing,
+          state:'attack', life: 18, maxLife: 18,
+          color: `rgba(255,140,40,${0.5 - k * 0.06})`,
+        });
+      }, k * 50);
+    }
+  },
+  warCry: () => {
+    // +55% ATK and +25% DEF for 7s, taunts enemies, shock pulse that damages close foes
+    player.buffs.warCry = 7000;
+    showToast('WAR CRY! +55% ATK · +25% DEF', 'epic');
+    flash(0.35); addShake(7);
+    const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    // Damaging pulse + aggro taunt
+    for (const m of game.monsters) {
+      if (m.currentHp <= 0) continue;
+      const d = Math.abs(m.x - player.x);
+      if (d < 340) {
+        m.aggroTarget = player;
+        if (d < 180) {
+          hitMonster(m, Math.floor(getAtk() * 0.9), rollCrit(), 'warCry');
+          m.vx += Math.sign(m.x - player.x) * 4;
+          m.vy -= 2;
+        }
+      }
+    }
+    // Expanding gold ring
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      game.particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * 7, vy: Math.sin(a) * 4,
+        life: 34, color: i % 2 ? '#ffcc44' : '#ffee88', size: 3
+      });
+    }
+  },
   // Berserker
-  bloodlust: () => { player.buffs.bloodlust = 6000; showToast('Bloodlust!', 'legendary'); flash(0.3); for (let i=0;i<30;i++) game.particles.push({x:player.x+player.w/2+(Math.random()-0.5)*player.w, y:player.y+Math.random()*player.h, vx:(Math.random()-0.5)*2, vy:-2-Math.random()*2, life:40, color:'#ff2244', size:3}); },
-  rampage: () => { player.buffs.rampage = 3000; showToast('RAMPAGE!', 'legendary'); flash(0.5); addShake(10); },
+  bloodlust: () => {
+    player.buffs.bloodlust = 7000;
+    // Instantly heal 20% and refill MP for 20%
+    player.hp = Math.min(getMaxHp(), player.hp + Math.floor(getMaxHp() * 0.20));
+    player.mp = Math.min(getMaxMp(), player.mp + Math.floor(getMaxMp() * 0.20));
+    showToast('BLOODLUST — lifesteal + speed!', 'legendary');
+    flash(0.4); addShake(6);
+    // Blood spiral particles
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 4;
+      game.particles.push({
+        x: player.x + player.w/2 + Math.cos(a) * 20,
+        y: player.y + player.h/2 + Math.sin(a) * 20,
+        vx: Math.cos(a) * 4, vy: Math.sin(a) * 4 - 1,
+        life: 45, color: i % 2 ? '#ff2244' : '#aa0022', size: 3
+      });
+    }
+  },
+  rampage: () => {
+    // 3.5s rampage — spawn outward shockwaves every 400ms
+    player.buffs.rampage = 3500;
+    showToast('RAMPAGE!', 'legendary');
+    flash(0.6); addShake(14);
+    const rounds = 8;
+    for (let i = 0; i < rounds; i++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        performAround(150, 1.4, { color:'#ff4466', kb:5 });
+        // Radial fire spokes
+        for (let j = 0; j < 10; j++) {
+          const a = (j / 10) * Math.PI * 2 + i * 0.4;
+          game.particles.push({
+            x: player.x + player.w/2, y: player.y + player.h/2,
+            vx: Math.cos(a) * 8, vy: Math.sin(a) * 8,
+            life: 24, color: '#ff4466', size: 4
+          });
+        }
+        addShake(2);
+      }, i * 420);
+    }
+  },
   // Knight
-  guardian: () => { player.buffs.guardian = 5000; showToast('Guardian — 80% DR', 'epic'); for (let i=0;i<24;i++){ const a=(i/24)*Math.PI*2; game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:Math.cos(a)*3,vy:Math.sin(a)*3,life:40,color:'#ffdd88',size:3}); } },
-  holyShield: () => { player.buffs.holyShield = 4000; player.invulnerable = 4000; showToast('HOLY SHIELD!', 'legendary'); flash(0.6); addShake(8); },
+  guardian: () => {
+    player.buffs.guardian = 6000;
+    player._guardianReflect = game.time + 6000;   // read in damage pipeline for thorns
+    showToast('GUARDIAN — 80% DR · 50% reflect', 'epic');
+    addShake(5); flash(0.3);
+    // Shield aura rings (2 concentric)
+    for (let ring = 0; ring < 2; ring++) {
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * Math.PI * 2;
+        game.particles.push({
+          x: player.x + player.w/2 + Math.cos(a) * (18 + ring * 10),
+          y: player.y + player.h/2 + Math.sin(a) * (18 + ring * 10),
+          vx: Math.cos(a) * 0.6, vy: Math.sin(a) * 0.6,
+          life: 50, color: ring ? '#ffdd88' : '#ffffff', size: 3
+        });
+      }
+    }
+  },
+  holyShield: () => {
+    player.buffs.holyShield = 5000;
+    player.invulnerable = Math.max(player.invulnerable, 5000);
+    showToast('HOLY SHIELD!', 'legendary');
+    flash(0.7); addShake(12);
+    // Three expanding light waves that damage enemies
+    const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    for (let w = 0; w < 3; w++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          const d = Math.hypot((m.x + m.w/2) - cx, (m.y + m.h/2) - cy);
+          if (d < 200 + w * 60) {
+            hitMonster(m, Math.floor(getAtk() * 1.8), true, 'holyShield');
+          }
+        }
+        const count = 28 + w * 6;
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2;
+          game.particles.push({
+            x: cx, y: cy,
+            vx: Math.cos(a) * (8 + w * 2), vy: Math.sin(a) * (8 + w * 2),
+            life: 36, color: i % 2 ? '#fff' : '#ffee88', size: 3
+          });
+        }
+        addShake(4);
+      }, w * 250);
+    }
+  },
 
   // Rogue
   stab: () => {
@@ -4556,6 +4779,17 @@ function updateMonsters(dt) {
       }
       player.hp -= (player._god ? 0 : dmg);
       player.lastHitTime = game.time;
+      // Knight Guardian reflect — bounce 50% of damage back to the attacker
+      if (player._guardianReflect && game.time < player._guardianReflect && m.currentHp > 0) {
+        const reflect = Math.floor(dmg * 0.5);
+        if (reflect > 0) {
+          hitMonster(m, reflect, false, 'thorns');
+          game.damageNumbers.push({
+            x: m.x + m.w/2 - 12, y: m.y - 6, vy: -2,
+            text: '↩ ' + reflect, life: 28, color: '#ffdd88', size: 13
+          });
+        }
+      }
       // Skill tree: Unstoppable — stun immune
       player.hitStun = player.tree.stunImmune ? 0 : Math.floor(140 * (1 - getStunResist()));
       player.invulnerable = 500;
