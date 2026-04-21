@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.2';
+const GAME_VERSION = 'v0.5.3';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3444,32 +3444,32 @@ const SKILL_FNS = {
     }
   },
   throwDagger: () => {
-    // Triple criss-cross fan of daggers + tiny forward hop
+    // Triple criss-cross fan of short-range daggers + big upward leap
     const baseShots = 3;
     const shots = baseShots + (player.mods.multishot || 0) + getEquipBonus('multishot');
     for (let i = 0; i < shots; i++) {
-      const spread = (i - (shots - 1) / 2) * 0.28;
+      const spread = (i - (shots - 1) / 2) * 0.32;
       game.projectiles.push({
         x: player.x + (player.facing > 0 ? player.w : -12),
         y: player.y + 12 + (i - (shots-1)/2) * 4,
-        vx: player.facing * (13 + Math.random() * 2),
+        vx: player.facing * (10 + Math.random() * 1.5),
         vy: spread * 4,
-        w: 18, h: 8, life: 55,
+        w: 18, h: 8, life: 22,           // shorter projectile range
         damage: getAtk() * 1.05 + 4,
         owner: 'player', skill: 'dagger', _enh: player._enh,
         color:'#ff88dd',
       });
     }
-    // Forward mobility hop
-    player.vx += player.facing * 2.5;
-    player.vy = Math.min(player.vy, -3);
-    for (let i = 0; i < 10; i++) {
+    // Big upward leap
+    player.vy = -11;
+    player.doubleJumpUsed = false;  // refreshes air jump
+    for (let i = 0; i < 12; i++) {
       game.particles.push({
-        x: player.x + player.w/2 - player.facing * 4,
-        y: player.y + 16 + Math.random() * 10,
-        vx: -player.facing * (1 + Math.random() * 2),
-        vy: (Math.random() - 0.5) * 2,
-        life: 16, color: i % 2 ? '#ff88ff' : '#aa44ff', size: 2
+        x: player.x + player.w/2 + (Math.random() - 0.5) * 14,
+        y: player.y + player.h - 2,
+        vx: (Math.random() - 0.5) * 3,
+        vy: 0.5 + Math.random() * 1.5,
+        life: 18, color: i % 2 ? '#ff88ff' : '#aa44ff', size: 2
       });
     }
   },
@@ -3522,20 +3522,62 @@ const SKILL_FNS = {
     addShake(4); flash(0.15);
   },
   flurry: () => {
-    // 7 rapid strikes with forward drift + afterimages each hit
-    const strikes = 7;
+    // Airborne-only diving diagonal slash — refund cost if on ground
+    if (player.onGround) {
+      player.mp += SKILLS.flurry.mp;
+      player.skillCooldowns.flurry = 0;
+      player.attacking = false;
+      player.attackTimer = 0;
+      showToast('Flurry needs air!', 'common');
+      return;
+    }
+    // Lock into a downward-forward dive
+    player.vx = player.facing * 6;
+    player.vy = 8;                  // strong downward slash
+    player.invulnerable = Math.max(player.invulnerable, 350);
+    // 5 diagonal cuts timed along the descent
+    const strikes = 5;
     for (let i = 0; i < strikes; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
-        player.x += player.facing * 6;
-        performMelee(120, 0.7, { color:'#ff99ff', burst:5 });
+        // Diagonal hitbox — reaches down + forward
+        const reach = 120;
+        const hitbox = {
+          x: player.facing > 0 ? player.x + player.w - 5 : player.x - reach + 5,
+          y: player.y + 10,
+          w: reach,
+          h: player.h + 50,          // extends further below player
+        };
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          if (aabb(hitbox, m)) {
+            const crit = rollCrit();
+            const dmg = Math.floor((getAtk() * 0.9 + Math.random() * 6) * (crit ? getCritDmg() : 1));
+            hitMonster(m, dmg, crit, 'melee');
+            m.vy += 4;                // slam them down
+            m.vx += player.facing * 3;
+          }
+        }
+        // Diagonal slash particles
+        const origin = { x: player.x + player.w/2, y: player.y + 10 };
+        for (let j = 0; j < 10; j++) {
+          const t = j / 10;
+          game.particles.push({
+            x: origin.x + player.facing * t * reach,
+            y: origin.y + t * 50,
+            vx: player.facing * (2 + Math.random()),
+            vy: 2 + Math.random() * 1.5,
+            life: 16, color: j % 2 ? '#ff99ff' : '#ffccff', size: 3
+          });
+        }
+        // Motion afterimage
         game.afterImages.push({
-          x: player.x - player.facing * 12, y: player.y,
+          x: player.x, y: player.y,
           facing: player.facing, state:'attack', life: 14, maxLife: 14,
-          color: `rgba(255,120,220,${0.5 - i * 0.04})`,
+          color: `rgba(255,120,220,${0.55 - i * 0.08})`,
         });
-        addShake(1);
-      }, i * 70);
+        addShake(2);
+      }, i * 60);
     }
   },
   // Ninja
