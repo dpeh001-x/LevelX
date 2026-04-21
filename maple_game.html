@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.1';
+const GAME_VERSION = 'v0.5.2';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3392,108 +3392,310 @@ const SKILL_FNS = {
   holyShield: () => { player.buffs.holyShield = 4000; player.invulnerable = 4000; showToast('HOLY SHIELD!', 'legendary'); flash(0.6); addShake(8); },
 
   // Rogue
-  stab: () => performMelee(95, 0.85, { color:'#fff' }),
-  backstab: () => {
-    let mul = 1.5;
-    for (const m of game.monsters) {
-      if (m.currentHp<=0) continue;
-      const face = m.facing;
-      const behind = (face > 0 && player.x + player.w/2 < m.x + m.w/2) || (face < 0 && player.x + player.w/2 > m.x + m.w/2);
-      if (behind && Math.abs(player.x - m.x) < 70) { mul = 3.0; break; }
+  stab: () => {
+    // Quick forward flicker + violet streak
+    const hits = performMelee(110, 0.95, { color:'#ff99ff', burst:6 });
+    if (hits) {
+      // Brief afterimage
+      game.afterImages.push({
+        x: player.x, y: player.y, facing: player.facing,
+        state:'attack', life: 12, maxLife: 12,
+        color: 'rgba(200,130,255,0.55)',
+      });
     }
-    performMelee(100, mul, { color:'#ff99cc', burst:12 });
+  },
+  backstab: () => {
+    // Blink to nearest enemy's back, huge crit hit, shadow trail
+    let tgt = null, bestD = Infinity;
+    for (const m of game.monsters) {
+      if (m.currentHp <= 0) continue;
+      const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2), (m.y+m.h/2)-(player.y+player.h/2));
+      if (d < 280 && d < bestD) { bestD = d; tgt = m; }
+    }
+    if (tgt) {
+      // Shadow trail from old pos to new pos
+      const oldX = player.x;
+      player.x = tgt.x + (tgt.facing > 0 ? -player.w - 6 : tgt.w + 6);
+      player.y = tgt.y;
+      player.facing = tgt.facing;
+      const steps = 8;
+      for (let i = 0; i < steps; i++) {
+        const t = i / steps;
+        game.afterImages.push({
+          x: oldX + (player.x - oldX) * t, y: player.y,
+          facing: player.facing, state:'attack', life: 16, maxLife: 16,
+          color: `rgba(180,60,220,${0.5 - t * 0.3})`,
+        });
+      }
+      hitMonster(tgt, Math.floor(getAtk() * 3.2), true, 'backstab');
+      // Blood burst
+      for (let i = 0; i < 20; i++) {
+        const a = Math.random() * Math.PI * 2;
+        game.particles.push({
+          x: tgt.x + tgt.w/2, y: tgt.y + tgt.h/2,
+          vx: Math.cos(a) * 6, vy: Math.sin(a) * 6,
+          life: 30, color: i % 2 ? '#ff3366' : '#aa2266', size: 3
+        });
+      }
+      addShake(6); flash(0.22);
+    } else {
+      // No target — long-range stylish thrust
+      performMelee(160, 2.0, { color:'#ff99ff', burst:14, kb:5 });
+    }
   },
   throwDagger: () => {
-    const shots = 1 + player.mods.multishot + getEquipBonus('multishot');
+    // Triple criss-cross fan of daggers + tiny forward hop
+    const baseShots = 3;
+    const shots = baseShots + (player.mods.multishot || 0) + getEquipBonus('multishot');
     for (let i = 0; i < shots; i++) {
-      const spread = (i - (shots - 1) / 2) * 0.2;
+      const spread = (i - (shots - 1) / 2) * 0.28;
       game.projectiles.push({
         x: player.x + (player.facing > 0 ? player.w : -12),
-        y: player.y + 18, vx: player.facing * 11, vy: spread * 3,
-        w: 16, h: 8, life: 60, damage: getAtk() * 1.3 + 5,
+        y: player.y + 12 + (i - (shots-1)/2) * 4,
+        vx: player.facing * (13 + Math.random() * 2),
+        vy: spread * 4,
+        w: 18, h: 8, life: 55,
+        damage: getAtk() * 1.05 + 4,
         owner: 'player', skill: 'dagger', _enh: player._enh,
+        color:'#ff88dd',
+      });
+    }
+    // Forward mobility hop
+    player.vx += player.facing * 2.5;
+    player.vy = Math.min(player.vy, -3);
+    for (let i = 0; i < 10; i++) {
+      game.particles.push({
+        x: player.x + player.w/2 - player.facing * 4,
+        y: player.y + 16 + Math.random() * 10,
+        vx: -player.facing * (1 + Math.random() * 2),
+        vy: (Math.random() - 0.5) * 2,
+        life: 16, color: i % 2 ? '#ff88ff' : '#aa44ff', size: 2
       });
     }
   },
   smokeDash: () => {
-    const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 140));
-    // damage enemies along the path
+    // Long-range blink with damaging trail + lingering smoke that damages foes inside
+    const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 240));
     const startX = player.x;
+    // Damage enemies along path
     for (const m of game.monsters) {
-      if (m.currentHp<=0) continue;
+      if (m.currentHp <= 0) continue;
       if (m.y + m.h < player.y || m.y > player.y + player.h) continue;
       const mid = m.x + m.w/2;
       const a = Math.min(startX, tx), b = Math.max(startX, tx);
       if (mid > a - 20 && mid < b + 20) {
-        hitMonster(m, Math.floor(getAtk() * 1.6), rollCrit(), 'smokeDash');
+        hitMonster(m, Math.floor(getAtk() * 1.9), rollCrit(), 'smokeDash');
       }
     }
-    for (let i = 0; i < 22; i++) {
-      game.particles.push({ x: startX + Math.random()*(tx-startX), y: player.y + Math.random()*player.h,
-        vx:(Math.random()-0.5)*3, vy:(Math.random()-0.5)*3, life:30, color:'#888', size:3 });
+    // Afterimage trail
+    for (let k = 0; k < 10; k++) {
+      const t = k / 10;
+      game.afterImages.push({
+        x: startX + (tx - startX) * t, y: player.y,
+        facing: player.facing, state:'attack', life: 20, maxLife: 20,
+        color: `rgba(150,150,180,${0.55 - t * 0.3})`,
+      });
     }
-    player.x = tx; player.invulnerable = Math.max(player.invulnerable, 300); addShake(2);
-  },
-  flurry: () => {
-    // Schedule 5 quick hits
-    for (let i = 0; i < 5; i++) {
+    // Drop a smoke cloud hazard at landing (ticks 3 damage waves)
+    const cloudX = tx + player.w/2;
+    for (let tick = 0; tick < 3; tick++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
-        performMelee(105, 0.55, { color:'#ffaabb', burst:4 });
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          if (Math.abs((m.x + m.w/2) - cloudX) < 90 && Math.abs(m.y - player.y) < 80) {
+            hitMonster(m, Math.floor(getAtk() * 0.8), rollCrit(), 'smokeDash');
+          }
+        }
+        for (let i = 0; i < 18; i++) {
+          game.particles.push({
+            x: cloudX + (Math.random() - 0.5) * 120,
+            y: player.y + Math.random() * 60,
+            vx: (Math.random() - 0.5) * 2, vy: -0.5 - Math.random(),
+            life: 28, color: '#aaaadd', size: 4
+          });
+        }
+      }, 200 + tick * 260);
+    }
+    player.x = tx;
+    player.invulnerable = Math.max(player.invulnerable, 400);
+    addShake(4); flash(0.15);
+  },
+  flurry: () => {
+    // 7 rapid strikes with forward drift + afterimages each hit
+    const strikes = 7;
+    for (let i = 0; i < strikes; i++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        player.x += player.facing * 6;
+        performMelee(120, 0.7, { color:'#ff99ff', burst:5 });
+        game.afterImages.push({
+          x: player.x - player.facing * 12, y: player.y,
+          facing: player.facing, state:'attack', life: 14, maxLife: 14,
+          color: `rgba(255,120,220,${0.5 - i * 0.04})`,
+        });
         addShake(1);
-      }, i * 85);
+      }, i * 70);
     }
   },
   // Ninja
   shadowStrike: () => {
-    // Find closest enemy, teleport behind
-    let tgt = null, bestD = Infinity;
-    for (const m of game.monsters) {
-      if (m.currentHp<=0) continue;
-      const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
-      if (d < bestD) { bestD = d; tgt = m; }
-    }
-    if (tgt) {
-      player.x = tgt.x + (tgt.facing > 0 ? -player.w - 8 : tgt.w + 8);
+    // Chain-teleport strike up to 3 nearest enemies, each hit guaranteed crit
+    const hit = new Set();
+    const doHit = (n) => {
+      if (n >= 3) return;
+      let tgt = null, bestD = Infinity;
+      for (const m of game.monsters) {
+        if (m.currentHp <= 0 || hit.has(m)) continue;
+        const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
+        if (d < 500 && d < bestD) { bestD = d; tgt = m; }
+      }
+      if (!tgt) return;
+      hit.add(tgt);
+      const oldX = player.x, oldY = player.y;
+      player.x = tgt.x + (tgt.facing > 0 ? -player.w - 4 : tgt.w + 4);
       player.y = tgt.y;
       player.facing = tgt.facing;
-      hitMonster(tgt, Math.floor(getAtk() * 3.5), true, 'shadowStrike');
-      for (let i=0;i<30;i++) { game.particles.push({x:tgt.x+tgt.w/2,y:tgt.y+tgt.h/2,vx:(Math.random()-0.5)*10,vy:(Math.random()-0.5)*10,life:30,color:'#aa44cc',size:3}); }
-      addShake(8); flash(0.3);
-    }
+      // Ink slash trail
+      for (let i = 0; i < 6; i++) {
+        const t = i / 6;
+        game.afterImages.push({
+          x: oldX + (player.x - oldX) * t, y: oldY + (player.y - oldY) * t,
+          facing: player.facing, state:'attack', life: 16, maxLife: 16,
+          color: `rgba(80,20,140,${0.7 - t * 0.4})`,
+        });
+      }
+      hitMonster(tgt, Math.floor(getAtk() * 3.0), true, 'shadowStrike');
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2;
+        game.particles.push({
+          x: tgt.x + tgt.w/2, y: tgt.y + tgt.h/2,
+          vx: Math.cos(a) * 8, vy: Math.sin(a) * 8,
+          life: 26, color: i % 2 ? '#aa44cc' : '#ff88dd', size: 3
+        });
+      }
+      addShake(5); flash(0.18);
+      setTimeout(() => doHit(n + 1), 140);
+    };
+    doHit(0);
+    player.invulnerable = Math.max(player.invulnerable, 500);
   },
   deathBlossom: () => {
-    const radius = 240;
-    for (const m of game.monsters) {
-      if (m.currentHp<=0) continue;
-      const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
-      if (d < radius) hitMonster(m, Math.floor(getAtk() * 2.4), rollCrit(), 'deathBlossom');
+    // Spinning vortex — 3 waves of strikes over 800ms, petal burst
+    const radius = 260;
+    const waves = 3;
+    for (let w = 0; w < waves; w++) {
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused) return;
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
+          if (d < radius) hitMonster(m, Math.floor(getAtk() * 1.5), rollCrit(), 'deathBlossom');
+        }
+        // Rotating petal ring
+        const ringCount = 20 + w * 6;
+        for (let i = 0; i < ringCount; i++) {
+          const a = (i / ringCount) * Math.PI * 2 + w * 0.5;
+          game.particles.push({
+            x: player.x + player.w/2, y: player.y + player.h/2,
+            vx: Math.cos(a) * (6 + w), vy: Math.sin(a) * (6 + w),
+            life: 34, color: i % 2 ? '#ff66aa' : '#ffccdd', size: 3
+          });
+        }
+        addShake(6); flash(0.22);
+      }, w * 260);
     }
-    for (let i=0;i<60;i++) { const a=(i/60)*Math.PI*2; game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:Math.cos(a)*7,vy:Math.sin(a)*7,life:40,color:'#ff88aa',size:3}); }
-    addShake(10); flash(0.4);
+    player.invulnerable = Math.max(player.invulnerable, 900);
+    showToast('DEATH BLOSSOM!', 'legendary');
   },
   // Assassin
   smokeBomb: () => {
     player.buffs.smokeBomb = 3000;
     player.invulnerable = Math.max(player.invulnerable, 3000);
     player.hp = Math.min(getMaxHp(), player.hp + Math.floor(getMaxHp() * 0.3));
-    for (let i=0;i<40;i++) { game.particles.push({x:player.x+player.w/2+(Math.random()-0.5)*60,y:player.y+(Math.random()-0.5)*60,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:40,color:'#aaaabb',size:4}); }
-    showToast('Vanished!', 'epic');
+    // Drop a damaging smoke cloud at position
+    const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    for (let tick = 0; tick < 4; tick++) {
+      setTimeout(() => {
+        for (const m of game.monsters) {
+          if (m.currentHp <= 0) continue;
+          if (Math.abs((m.x + m.w/2) - cx) < 110 && Math.abs((m.y + m.h/2) - cy) < 80) {
+            hitMonster(m, Math.floor(getAtk() * 0.7), rollCrit(), 'smokeBomb');
+          }
+        }
+        for (let i = 0; i < 18; i++) {
+          game.particles.push({
+            x: cx + (Math.random() - 0.5) * 140,
+            y: cy + (Math.random() - 0.5) * 80,
+            vx: (Math.random() - 0.5) * 2, vy: -0.5 - Math.random(),
+            life: 34, color: i % 2 ? '#bbbbdd' : '#8888aa', size: 4
+          });
+        }
+      }, tick * 250);
+    }
+    for (let i = 0; i < 40; i++) {
+      game.particles.push({
+        x: cx + (Math.random()-0.5) * 80, y: cy + (Math.random()-0.5) * 60,
+        vx: (Math.random()-0.5) * 5, vy: (Math.random()-0.5) * 5,
+        life: 40, color: '#aaaabb', size: 4
+      });
+    }
+    showToast('VANISHED!', 'epic');
   },
   sleight: () => {
-    let stolen = 0;
+    // Chain-teleport through every enemy in range, stealing from each
+    const targets = [];
     for (const m of game.monsters) {
-      if (m.currentHp<=0) continue;
-      if (Math.abs(m.x - player.x) < 300) {
-        stolen += Math.floor(m.mesos * 0.5);
-        hitMonster(m, Math.floor(getAtk() * 1.4), true, 'sleight');
+      if (m.currentHp <= 0) continue;
+      const d = Math.hypot((m.x+m.w/2)-(player.x+player.w/2),(m.y+m.h/2)-(player.y+player.h/2));
+      if (d < 380) targets.push({ m, d });
+    }
+    targets.sort((a, b) => a.d - b.d);
+    const maxChain = Math.min(6, targets.length);
+    let stolen = 0;
+    for (let i = 0; i < maxChain; i++) {
+      const tgt = targets[i].m;
+      setTimeout(() => {
+        if (player.hp <= 0 || game.paused || tgt.currentHp <= 0) return;
+        const oldX = player.x, oldY = player.y;
+        player.x = tgt.x + (tgt.facing > 0 ? -player.w - 4 : tgt.w + 4);
+        player.y = tgt.y;
+        player.facing = tgt.facing;
+        // Shadow trail
+        for (let k = 0; k < 5; k++) {
+          const t = k / 5;
+          game.afterImages.push({
+            x: oldX + (player.x - oldX) * t, y: oldY + (player.y - oldY) * t,
+            facing: player.facing, state:'attack', life: 14, maxLife: 14,
+            color: `rgba(255,180,80,${0.55 - t * 0.3})`,
+          });
+        }
+        const steal = Math.floor(tgt.mesos * 0.5);
+        stolen += steal;
+        hitMonster(tgt, Math.floor(getAtk() * 1.4), true, 'sleight');
+        // Gold coin burst
+        for (let j = 0; j < 14; j++) {
+          const a = Math.random() * Math.PI * 2;
+          game.particles.push({
+            x: tgt.x + tgt.w/2, y: tgt.y + tgt.h/2,
+            vx: Math.cos(a) * 5, vy: Math.sin(a) * 5 - 2,
+            life: 32, color: j % 2 ? '#ffdd44' : '#ff9922', size: 3
+          });
+        }
+        game.damageNumbers.push({
+          x: tgt.x + tgt.w/2 - 12, y: tgt.y - 10, vy: -2,
+          text: '+' + steal + '💰', life: 40, color: '#ffdd44', size: 13
+        });
+      }, i * 120);
+    }
+    setTimeout(() => {
+      if (stolen > 0) {
+        player.mesos += stolen;
+        showToast(`Stole ${stolen}💰!`, 'legendary');
       }
-    }
-    if (stolen > 0) {
-      player.mesos += stolen;
-      showToast(`Stole ${stolen}💰!`, 'legendary');
-    }
+    }, maxChain * 120 + 50);
     player.buffs.sleight = 5000;
+    player.invulnerable = Math.max(player.invulnerable, maxChain * 120 + 200);
     flash(0.3); addShake(5);
   },
 
