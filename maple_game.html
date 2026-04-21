@@ -790,7 +790,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.4.1';
+const GAME_VERSION = 'v0.4.2';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1269,6 +1269,124 @@ const STAR_BONUS    = 0.10; // +10% per star
 const MAX_STARS     = 10;
 function starSuccessRate(star) { return Math.max(5, 70 - star * 5); }
 function starMult(item)        { return 1 + (item.stars || 0) * STAR_BONUS; }
+
+// Item power score — higher = better. Used for auto-equip comparison.
+const ITEM_STAT_WEIGHTS = {
+  atk: 3, def: 2, hp: 0.3, mp: 0.2, crit: 2.5,
+  critDmg: 60, atkPct: 120, speed: 8, jump: 4,
+  lifesteal: 80, burn: 20, multishot: 25, thorns: 2,
+  greed: 20, xpBoost: 40, mpRegen: 20, hpRegen: 30,
+  dodgeChance: 200, freezeChance: 150, chainChance: 120, voidChance: 200,
+  extraJumps: 15, mpRegenPct: 40,
+};
+function itemScore(it) {
+  if (!it) return 0;
+  const rarityW = { common:1, rare:1.4, epic:2.0, legendary:3.0 }[it.rarity] || 1;
+  let v = 0;
+  for (const k in ITEM_STAT_WEIGHTS) {
+    v += (it[k] || 0) * ITEM_STAT_WEIGHTS[k];
+  }
+  return v * rarityW * starMult(it);
+}
+
+// Pretty labels for gear-change toast
+const STAT_LABEL = {
+  atk:'ATK', def:'DEF', hp:'HP', mp:'MP', crit:'Crit', critDmg:'Crit DMG',
+  atkPct:'ATK%', speed:'Speed', jump:'Jump', lifesteal:'Lifesteal',
+  burn:'Burn', multishot:'Multishot', thorns:'Thorns', greed:'Lumen+',
+  xpBoost:'XP+', mpRegen:'MP Regen', hpRegen:'HP Regen',
+  dodgeChance:'Dodge%', freezeChance:'Freeze%', chainChance:'Chain%',
+  voidChance:'Void%', extraJumps:'Extra Jumps', mpRegenPct:'MP Regen%'
+};
+
+// Compute per-stat deltas between two items (oldItem may be null)
+function gearDeltas(oldIt, newIt) {
+  const deltas = [];
+  const keys = new Set([...Object.keys(oldIt || {}), ...Object.keys(newIt || {})]);
+  for (const k of keys) {
+    if (!(k in ITEM_STAT_WEIGHTS)) continue;
+    const oldV = ((oldIt && oldIt[k]) || 0) * (oldIt ? starMult(oldIt) : 1);
+    const newV = ((newIt && newIt[k]) || 0) * (newIt ? starMult(newIt) : 1);
+    const d = newV - oldV;
+    if (Math.abs(d) < 0.001) continue;
+    deltas.push({ key: k, label: STAT_LABEL[k] || k, delta: d });
+  }
+  return deltas;
+}
+
+// Auto-equip if new item beats currently equipped (by 1%+)
+function tryAutoEquip(newItem) {
+  const slot = newItem.slot;
+  const current = player.equipped[slot];
+  const oldScore = itemScore(current);
+  const newScore = itemScore(newItem);
+  if (newScore > oldScore * 1.01) {
+    // Move old to inventory, new to equipped
+    if (current) player.inventory.push(current);
+    const idx = player.inventory.indexOf(newItem);
+    if (idx >= 0) player.inventory.splice(idx, 1);
+    player.equipped[slot] = newItem;
+    showGearChange(current, newItem, newScore - oldScore);
+    return true;
+  }
+  return false;
+}
+
+// Floating side-panel showing gear comparison
+function showGearChange(oldIt, newIt, scoreDelta) {
+  let el = document.getElementById('gear-change');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'gear-change';
+    el.style.cssText = `
+      position:absolute; top:110px; right:10px; width:240px;
+      background:linear-gradient(160deg, rgba(20,14,40,0.95), rgba(10,6,20,0.95));
+      border:2px solid #ffdd44; border-radius:8px; padding:10px;
+      font-size:11px; color:#fff; text-shadow:1px 1px 2px #000;
+      box-shadow:0 0 16px rgba(255,221,68,0.35);
+      z-index:50; transition:opacity 0.4s; opacity:0;
+    `;
+    document.querySelector('.game-wrapper').appendChild(el);
+  }
+  clearTimeout(el._hideTimer);
+  const rarityColor = { common:'#ccc', rare:'#66aaff', epic:'#cc66ff', legendary:'#ffcc44' };
+  const newCol = rarityColor[newIt.rarity] || '#fff';
+  const oldCol = oldIt ? rarityColor[oldIt.rarity] || '#aaa' : '#666';
+  const deltas = gearDeltas(oldIt, newIt);
+  let rows = '';
+  for (const d of deltas) {
+    const v = d.delta;
+    const pct = (d.key === 'atkPct' || d.key === 'critDmg' || d.key === 'mpRegenPct' ||
+                 d.key.endsWith('Chance') || d.key === 'lifesteal' || d.key === 'greed' ||
+                 d.key === 'xpBoost');
+    const display = pct ? (v * 100).toFixed(1) + '%' : (v > 0 ? '+' : '') + v.toFixed(d.key === 'speed' || d.key === 'jump' ? 1 : 0);
+    const color = v > 0 ? '#66ff88' : '#ff6666';
+    const arrow = v > 0 ? '▲' : '▼';
+    rows += `<div style="display:flex; justify-content:space-between; padding:1px 2px;">
+      <span>${d.label}</span>
+      <span style="color:${color}; font-weight:bold;">${arrow} ${display}</span>
+    </div>`;
+  }
+  const scoreColor = scoreDelta > 0 ? '#88ff88' : '#ff8888';
+  el.innerHTML = `
+    <div style="color:#ffdd44; font-weight:bold; font-size:12px; margin-bottom:6px; text-align:center;">
+      ✦ AUTO-EQUIPPED ✦
+    </div>
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #443;">
+      <div style="font-size:18px;">${newIt.icon}</div>
+      <div style="flex:1;">
+        <div style="color:${newCol}; font-weight:bold;">${newIt.name}${newIt.stars ? ' ★' + newIt.stars : ''}</div>
+        ${oldIt ? `<div style="font-size:10px; color:#888;">replaced <span style="color:${oldCol};">${oldIt.name}</span></div>` : ''}
+      </div>
+    </div>
+    ${rows || '<div style="color:#888; text-align:center;">no stat change</div>'}
+    <div style="margin-top:6px; padding-top:6px; border-top:1px solid #443; text-align:center; font-size:10px;">
+      Power: <span style="color:${scoreColor}; font-weight:bold;">${scoreDelta > 0 ? '+' : ''}${scoreDelta.toFixed(1)}</span>
+    </div>
+  `;
+  el.style.opacity = '1';
+  el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 5500);
+}
 function canDowngradeOnFail(star) { return star >= 5; }
 
 function _pickN(arr, n) {
@@ -2993,7 +3111,11 @@ function updatePlayer(dt) {
           text:'+' + d.value, life:40, color:'#4488ff' });
       } else if (d.type === 'item') {
         player.inventory.push(d.item);
-        showToast(`Looted ${d.item.name}!`, d.item.rarity);
+        if (tryAutoEquip(d.item)) {
+          // showGearChange handles the popup; skip the generic toast
+        } else {
+          showToast(`Looted ${d.item.name}`, d.item.rarity);
+        }
       }
       game.drops.splice(i, 1); continue;
     }
