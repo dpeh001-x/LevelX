@@ -6,7 +6,7 @@ A 2D action-platformer RPG with roguelite elements. Four classes, eight job adva
 
 **Open `maple_game.html` in a browser.** No build step, no server.
 
-Live play URL (once GitHub Pages is enabled): **https://YOUR_USERNAME.github.io/LevelX/maple_game.html**
+Live play URL (once GitHub Pages is enabled): **https://dpeh001-x.github.io/LevelX/maple_game.html**
 
 ## 🎯 Controls
 
