@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.7';
+const GAME_VERSION = 'v0.5.8';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3254,6 +3254,11 @@ function updatePlayer(dt) {
     player._flowStacks = 0;
     player._flowStackExpiry = 0;
   }
+  // Milestone: Spell Echo — tick down window so it doesn't sit pending forever
+  if (player._spellEcho > 0) {
+    player._spellEcho -= dt;
+    if (player._spellEcho < 0) player._spellEcho = 0;
+  }
   // Milestone: Afterimage — top-speed sprint spawns ghost copies that damage enemies they pass
   if (hasMilestone('afterimage')) {
     const moving = Math.abs(player.vx) > 5 || player.quickDashTimer > 0 || player.dodgeTimer > 0;
@@ -3468,7 +3473,7 @@ const SKILL_FNS = {
         if (m.currentHp <= 0) continue;
         if (aabb(hitbox, m)) {
           const crit = rollCrit();
-          const dmg = Math.floor((getAtk() * 2.6 + Math.random() * 10) * (crit ? getCritDmg() : 1));
+          const dmg = Math.floor((getAtk() * 2.1 + Math.random() * 10) * (crit ? getCritDmg() : 1));
           hitMonster(m, dmg, crit, 'melee');
           m.vx += player.facing * 8;
           m.vy -= 3;
@@ -3593,7 +3598,7 @@ const SKILL_FNS = {
     for (let i = 0; i < rounds; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
-        performAround(150, 1.4, { color:'#ff4466', kb:5 });
+        performAround(150, 1.1, { color:'#ff4466', kb:5 });
         // Radial fire spokes
         for (let j = 0; j < 10; j++) {
           const a = (j / 10) * Math.PI * 2 + i * 0.4;
@@ -3693,7 +3698,7 @@ const SKILL_FNS = {
           color: `rgba(180,60,220,${0.5 - t * 0.3})`,
         });
       }
-      hitMonster(tgt, Math.floor(getAtk() * 3.2), true, 'backstab');
+      hitMonster(tgt, Math.floor(getAtk() * 2.6), true, 'backstab');
       // Blood burst
       for (let i = 0; i < 20; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -3880,7 +3885,7 @@ const SKILL_FNS = {
           color: `rgba(80,20,140,${0.7 - t * 0.4})`,
         });
       }
-      hitMonster(tgt, Math.floor(getAtk() * 3.0), true, 'shadowStrike');
+      hitMonster(tgt, Math.floor(getAtk() * 2.4), true, 'shadowStrike');
       for (let i = 0; i < 16; i++) {
         const a = Math.random() * Math.PI * 2;
         game.particles.push({
@@ -5186,11 +5191,13 @@ function hitMonster(m, dmg, isCrit, skill) {
     player._spellEcho = 0;
     game.damageNumbers.push({ x: m.x + m.w/2 - 8, y: m.y - 4, vy: -2, text: 'ECHO', life: 30, color: '#c8a8ff', size: 13 });
   }
-  // Milestone: Lucky Seven — every 7th hit crits; already-crit becomes 3x Mega-Crit
-  if (hasMilestone('luckySeven')) {
+  // Milestone: Lucky Seven — every 7th basic/projectile hit auto-crits; already-crit becomes Mega
+  // Restricted to basic attacks so AoE ults don't spam the effect
+  const LUCKY_SKILLS = new Set(['melee','arrow','dagger','bolt']);
+  if (hasMilestone('luckySeven') && LUCKY_SKILLS.has(skill)) {
     player._hitCount = (player._hitCount || 0) + 1;
     if (player._hitCount % 7 === 0) {
-      if (isCrit) { dmg = Math.floor(dmg * 2); // scale from already-crit to mega
+      if (isCrit) { dmg = Math.floor(dmg * 1.75);
         game.damageNumbers.push({ x: m.x + m.w/2 - 20, y: m.y - 10, vy: -2.5, text: 'MEGA-CRIT!', life: 50, color: '#ffee44', size: 18 });
       } else {
         dmg = Math.floor(dmg * getCritDmg());
