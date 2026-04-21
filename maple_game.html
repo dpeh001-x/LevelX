@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.4';
+const GAME_VERSION = 'v0.5.5';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3667,17 +3667,21 @@ const SKILL_FNS = {
     }
   },
   throwDagger: () => {
-    // Triple criss-cross fan of short-range daggers + big upward leap
+    // 45°-downward fan of short-range daggers + big upward leap
     const baseShots = 3;
     const shots = baseShots + (player.mods.multishot || 0) + getEquipBonus('multishot');
+    const speed = 11;
     for (let i = 0; i < shots; i++) {
-      const spread = (i - (shots - 1) / 2) * 0.32;
+      const spread = (i - (shots - 1) / 2) * 0.28;
+      // 45° downward base; spread rotates around that angle
+      const baseAng = Math.PI / 4;   // 45° below horizontal
+      const ang = baseAng + spread;
       game.projectiles.push({
         x: player.x + (player.facing > 0 ? player.w : -12),
-        y: player.y + 12 + (i - (shots-1)/2) * 4,
-        vx: player.facing * (10 + Math.random() * 1.5),
-        vy: spread * 4,
-        w: 18, h: 8, life: 22,           // shorter projectile range
+        y: player.y + 8 + (i - (shots-1)/2) * 3,
+        vx: player.facing * Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        w: 18, h: 8, life: 22,
         damage: getAtk() * 1.05 + 4,
         owner: 'player', skill: 'dagger', _enh: player._enh,
         color:'#ff88dd',
@@ -3745,7 +3749,7 @@ const SKILL_FNS = {
     addShake(4); flash(0.15);
   },
   flurry: () => {
-    // Airborne-only diving diagonal slash — refund cost if on ground
+    // Airborne-only horizontal-diagonal dash slash — refund cost if on ground
     if (player.onGround) {
       player.mp += SKILLS.flurry.mp;
       player.skillCooldowns.flurry = 0;
@@ -3754,22 +3758,25 @@ const SKILL_FNS = {
       showToast('Flurry needs air!', 'common');
       return;
     }
-    // Lock into a downward-forward dive
-    player.vx = player.facing * 6;
-    player.vy = 8;                  // strong downward slash
-    player.invulnerable = Math.max(player.invulnerable, 350);
-    // 5 diagonal cuts timed along the descent
+    // Lock into a horizontal sweep with gentle downward drift
+    player.vx = player.facing * 14;   // strong horizontal burst
+    player.vy = 3;                    // mild downward drift
+    player.invulnerable = Math.max(player.invulnerable, 420);
+    // 5 cuts along the horizontal dash
     const strikes = 5;
     for (let i = 0; i < strikes; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
-        // Diagonal hitbox — reaches down + forward
-        const reach = 120;
+        // Keep momentum during the sweep
+        player.vx = player.facing * 12;
+        player.vy = Math.min(player.vy, 3);
+        // Wide horizontal hitbox — long reach forward, modest vertical
+        const reach = 160;
         const hitbox = {
           x: player.facing > 0 ? player.x + player.w - 5 : player.x - reach + 5,
-          y: player.y + 10,
+          y: player.y + 4,
           w: reach,
-          h: player.h + 50,          // extends further below player
+          h: player.h + 20,           // mostly horizontal, slight vertical margin
         };
         for (const m of game.monsters) {
           if (m.currentHp <= 0) continue;
@@ -3777,19 +3784,19 @@ const SKILL_FNS = {
             const crit = rollCrit();
             const dmg = Math.floor((getAtk() * 0.9 + Math.random() * 6) * (crit ? getCritDmg() : 1));
             hitMonster(m, dmg, crit, 'melee');
-            m.vy += 4;                // slam them down
-            m.vx += player.facing * 3;
+            m.vx += player.facing * 5;
+            m.vy -= 1.5;                // slight lift, not slam
           }
         }
-        // Diagonal slash particles
-        const origin = { x: player.x + player.w/2, y: player.y + 10 };
-        for (let j = 0; j < 10; j++) {
-          const t = j / 10;
+        // Horizontal slash streak particles
+        const origin = { x: player.x + player.w/2, y: player.y + player.h/2 };
+        for (let j = 0; j < 12; j++) {
+          const t = j / 12;
           game.particles.push({
             x: origin.x + player.facing * t * reach,
-            y: origin.y + t * 50,
-            vx: player.facing * (2 + Math.random()),
-            vy: 2 + Math.random() * 1.5,
+            y: origin.y + (Math.random() - 0.5) * 10,
+            vx: player.facing * (3 + Math.random() * 2),
+            vy: (Math.random() - 0.5) * 1.5,
             life: 16, color: j % 2 ? '#ff99ff' : '#ffccff', size: 3
           });
         }
