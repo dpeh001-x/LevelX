@@ -791,7 +791,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.5.5';
+const GAME_VERSION = 'v0.5.6';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3397,74 +3397,117 @@ const SKILL_FNS = {
     }
   },
   powerStrike: () => {
-    // Overhead smash + forward shockwave projectile that carries the hit further
-    addShake(5); flash(0.2);
-    performMelee(150, 2.4, { color:'#ffaa66', kb:8, vy:-3, stun:500, burst:24 });
-    // Shockwave projectile travels 160px
-    game.projectiles.push({
-      x: player.x + (player.facing > 0 ? player.w : -30),
-      y: player.y + 24,
-      vx: player.facing * 10, vy: 0,
-      w: 32, h: 22, life: 24,
-      damage: getAtk() * 1.2 + 6,
-      owner: 'player', skill: 'shock', color:'#ffaa66',
-    });
-    // Impact ground dust
-    for (let i = 0; i < 14; i++) {
+    // 2-hit combo — quick opener then heavy follow-up
+    addShake(3); flash(0.12);
+    // Hit 1 — quick forward jab
+    performMelee(140, 1.3, { color:'#ffcc88', kb:3, stun:120, burst:10 });
+    for (let i = 0; i < 8; i++) {
       game.particles.push({
-        x: player.x + player.w/2 + player.facing * (20 + Math.random() * 40),
-        y: player.y + player.h - Math.random() * 6,
-        vx: player.facing * (2 + Math.random() * 3),
-        vy: -1 - Math.random() * 2,
-        life: 22, color: i % 2 ? '#d8b080' : '#a8805a', size: 3
+        x: player.x + player.w/2 + player.facing * (20 + Math.random() * 30),
+        y: player.y + 18 + Math.random() * 10,
+        vx: player.facing * (1 + Math.random() * 2),
+        vy: (Math.random() - 0.5) * 1.5,
+        life: 14, color: '#ffcc88', size: 2
       });
     }
-  },
-  groundSlam: () => {
-    // Leap-up-then-slam — hop, AoE, spawn 2 traveling shockwaves
-    addShake(8); flash(0.22);
-    player.vy = Math.min(player.vy, -6);
+    // Hit 2 — heavy overhead cleave with stun
     setTimeout(() => {
       if (player.hp <= 0 || game.paused) return;
-      player.vy = 10;                // slam down
-      performAround(140, 1.8, { color:'#ccdddd', kb:6 });
-      // Traveling shockwaves left + right
-      for (const dir of [-1, 1]) {
-        game.projectiles.push({
-          x: player.x + player.w/2,
-          y: player.y + player.h - 6,
-          vx: dir * 7, vy: 0,
-          w: 24, h: 18, life: 40,
-          damage: getAtk() * 1.1 + 4,
-          owner: 'player', skill: 'shock', color:'#ccdddd', pierce: true,
-        });
-      }
-      // Ground crack dust
-      for (let i = 0; i < 24; i++) {
-        const dir = Math.random() < 0.5 ? -1 : 1;
+      addShake(6); flash(0.22);
+      performMelee(160, 2.3, { color:'#ffaa66', kb:8, vy:-3, stun:500, burst:22 });
+      // Impact dust
+      for (let i = 0; i < 16; i++) {
         game.particles.push({
-          x: player.x + player.w/2 + dir * (10 + Math.random() * 80),
-          y: player.y + player.h - Math.random() * 8,
-          vx: dir * (2 + Math.random() * 3),
-          vy: -2 - Math.random() * 3,
-          life: 26, color: i % 2 ? '#ccdddd' : '#888899', size: 3
+          x: player.x + player.w/2 + player.facing * (20 + Math.random() * 50),
+          y: player.y + player.h - Math.random() * 6,
+          vx: player.facing * (2 + Math.random() * 3),
+          vy: -1 - Math.random() * 2,
+          life: 22, color: i % 2 ? '#d8b080' : '#a8805a', size: 3
         });
       }
-      addShake(10);
     }, 180);
   },
-  rush: () => {
-    // Longer rush + i-frames + fire trail DoT + brief +ATK buff on connect
-    player.rushTimer = 440;
-    player.rushDir = player.facing;
-    player.invulnerable = Math.max(player.invulnerable, 440);
-    addShake(4); flash(0.15);
-    // Schedule trail particles + lingering fire damage ticks
+  groundSlam: () => {
+    // Overhead smash — leap up high, then crash down with a big front-facing slam (no projectiles)
+    addShake(4); flash(0.14);
+    player.vy = -12;                 // big leap up
+    player.invulnerable = Math.max(player.invulnerable, 600);
+    // Leap trail
     for (let i = 0; i < 8; i++) {
+      game.particles.push({
+        x: player.x + player.w/2 + (Math.random()-0.5)*10,
+        y: player.y + player.h - 2,
+        vx: (Math.random()-0.5) * 2,
+        vy: 1 + Math.random(),
+        life: 16, color: '#ccdddd', size: 2
+      });
+    }
+    setTimeout(() => {
+      if (player.hp <= 0 || game.paused) return;
+      player.vy = 18;                // slam down hard
+      // Afterimage of the dive
+      game.afterImages.push({
+        x: player.x, y: player.y, facing: player.facing,
+        state:'attack', life: 20, maxLife: 20,
+        color: 'rgba(200,220,240,0.5)',
+      });
+    }, 260);
+    // Big impact when approximately landed — big front smash
+    setTimeout(() => {
+      if (player.hp <= 0 || game.paused) return;
+      addShake(14); flash(0.35); addHitStop(90);
+      // Wide front-facing smash hitbox
+      const reach = 200;
+      const hitbox = {
+        x: player.facing > 0 ? player.x + player.w - 10 : player.x - reach + 10,
+        y: player.y + 10,
+        w: reach,
+        h: player.h + 40,
+      };
+      for (const m of game.monsters) {
+        if (m.currentHp <= 0) continue;
+        if (aabb(hitbox, m)) {
+          const crit = rollCrit();
+          const dmg = Math.floor((getAtk() * 2.6 + Math.random() * 10) * (crit ? getCritDmg() : 1));
+          hitMonster(m, dmg, crit, 'melee');
+          m.vx += player.facing * 8;
+          m.vy -= 3;
+          m.stunTimer = Math.max(m.stunTimer || 0, 600);
+        }
+      }
+      // Big front impact burst — sand + debris
+      for (let i = 0; i < 30; i++) {
+        const spread = (Math.random() - 0.3) * Math.PI;
+        game.particles.push({
+          x: player.x + player.w/2 + player.facing * (20 + Math.random() * 80),
+          y: player.y + player.h - Math.random() * 10,
+          vx: player.facing * (2 + Math.random() * 5),
+          vy: -3 - Math.random() * 4,
+          life: 32, color: i % 2 ? '#ccdddd' : '#888899', size: 3
+        });
+      }
+      // Radial shockwave ring FX (visual only — no traveling projectile)
+      for (let i = 0; i < 22; i++) {
+        const a = (i / 22) * Math.PI * 2;
+        game.particles.push({
+          x: player.x + player.w/2, y: player.y + player.h - 4,
+          vx: Math.cos(a) * 6, vy: Math.sin(a) * 3,
+          life: 22, color: '#eef0f4', size: 3
+        });
+      }
+    }, 520);
+  },
+  rush: () => {
+    // Shorter dash + i-frames + fire trail DoT + afterimage contrail
+    player.rushTimer = 300;
+    player.rushDir = player.facing;
+    player.invulnerable = Math.max(player.invulnerable, 300);
+    addShake(4); flash(0.15);
+    // Fire trail DoT ticks during the dash
+    for (let i = 0; i < 6; i++) {
       setTimeout(() => {
         if (player.hp <= 0 || game.paused) return;
         const cx = player.x + player.w/2, cy = player.y + player.h/2;
-        // Damage tick along current position
         for (const m of game.monsters) {
           if (m.currentHp <= 0) continue;
           if (Math.abs((m.x + m.w/2) - cx) < 60 && Math.abs(m.y - player.y) < 60) {
@@ -3480,17 +3523,17 @@ const SKILL_FNS = {
             life: 20, color: k % 2 ? '#ff7733' : '#ffcc44', size: 3
           });
         }
-      }, i * 50);
+      }, i * 45);
     }
-    // Afterimage trail
-    for (let k = 0; k < 6; k++) {
+    // Afterimage contrail
+    for (let k = 0; k < 5; k++) {
       setTimeout(() => {
         game.afterImages.push({
           x: player.x, y: player.y, facing: player.facing,
-          state:'attack', life: 18, maxLife: 18,
-          color: `rgba(255,140,40,${0.5 - k * 0.06})`,
+          state:'attack', life: 16, maxLife: 16,
+          color: `rgba(255,140,40,${0.5 - k * 0.08})`,
         });
-      }, k * 50);
+      }, k * 45);
     }
   },
   warCry: () => {
