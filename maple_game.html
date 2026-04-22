@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.4';
+const GAME_VERSION = 'v0.9.5';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -8203,49 +8203,117 @@ function drawBackground() {
     return;
   }
 
-  // Distant mountains
-  ctx.fillStyle = '#7a8a9e';
-  ctx.beginPath();
-  for (let x = 0; x <= W + 200; x += 80) {
-    const wx = x + game.camera.x * 0.1;
-    const h = 80 + Math.sin(wx * 0.01) * 40 + Math.cos(wx * 0.02) * 20;
-    ctx.lineTo(x, 380 - h);
-  }
-  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  // Helper — smooth mountain silhouette using a quadratic curve between peaks
+  const drawMountainLayer = (col, colLight, step, baseY, amp, parallax, seed) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(-10, H);
+    const pts = [];
+    for (let x = -step; x <= W + step * 2; x += step) {
+      const wx = x + game.camera.x * parallax + seed;
+      const h = amp + Math.sin(wx * 0.008) * amp * 0.6 + Math.cos(wx * 0.016) * amp * 0.3;
+      pts.push({ x, y: baseY - h });
+    }
+    ctx.lineTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const xc = (pts[i].x + pts[i+1].x) / 2;
+      const yc = (pts[i].y + pts[i+1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+    }
+    ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+    ctx.lineTo(W + 20, H);
+    ctx.lineTo(-10, H);
+    ctx.closePath();
+    ctx.fill();
+    // Light-side highlight — rim the tops of the silhouette with a lighter tone
+    ctx.strokeStyle = colLight;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const xc = (pts[i].x + pts[i+1].x) / 2;
+      const yc = (pts[i].y + pts[i+1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+    }
+    ctx.stroke();
+  };
 
-  ctx.fillStyle = '#8fa0a8';
-  ctx.beginPath();
-  for (let x = 0; x <= W + 200; x += 60) {
-    const wx = x + game.camera.x * 0.2;
-    const h = 60 + Math.sin(wx * 0.015) * 30 + Math.cos(wx * 0.025) * 15;
-    ctx.lineTo(x, 400 - h);
-  }
-  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  // Three layered mountain silhouettes — deepest → nearest, with 2-tone rim light
+  drawMountainLayer('#7886a4', '#98aac6', 90, 360, 90, 0.06, 0);
+  drawMountainLayer('#8a9cb0', '#b0c0d2', 70, 380, 70, 0.12, 30);
+  drawMountainLayer('#9ab0b8', '#c8d8d8', 55, 404, 52, 0.22, 70);
 
-  // Clouds
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  // Soft atmospheric haze band at the mountain base — hides the seam with ground
+  const hazeGrad = ctx.createLinearGradient(0, 360, 0, 440);
+  hazeGrad.addColorStop(0, 'rgba(255,255,255,0)');
+  hazeGrad.addColorStop(0.5, 'rgba(235,240,250,0.35)');
+  hazeGrad.addColorStop(1, 'rgba(235,240,250,0)');
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, 360, W, 80);
+
+  // Clouds — soft cotton with 2-tone highlight
   for (const cl of clouds) {
     cl.x -= cl.speed;
     if (cl.x + cl.size < -game.camera.x * 0.15) cl.x = game.camera.x * 0.15 + W + 100;
     const sx = cl.x - game.camera.x * 0.15;
+    // Shadow base
+    ctx.fillStyle = 'rgba(200,210,225,0.55)';
+    ctx.beginPath();
+    ctx.arc(sx, cl.y + 2, cl.size * 0.5, 0, Math.PI * 2);
+    ctx.arc(sx + cl.size * 0.4, cl.y + 1, cl.size * 0.4, 0, Math.PI * 2);
+    ctx.arc(sx + cl.size * 0.8, cl.y + 2, cl.size * 0.45, 0, Math.PI * 2);
+    ctx.arc(sx + cl.size * 0.3, cl.y + cl.size * 0.15 + 2, cl.size * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    // Main body
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.beginPath();
     ctx.arc(sx, cl.y, cl.size * 0.5, 0, Math.PI * 2);
     ctx.arc(sx + cl.size * 0.4, cl.y - cl.size * 0.1, cl.size * 0.4, 0, Math.PI * 2);
     ctx.arc(sx + cl.size * 0.8, cl.y, cl.size * 0.45, 0, Math.PI * 2);
     ctx.arc(sx + cl.size * 0.3, cl.y + cl.size * 0.15, cl.size * 0.35, 0, Math.PI * 2);
     ctx.fill();
+    // Bright top rim — 2-tone
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath();
+    ctx.arc(sx + cl.size * 0.4, cl.y - cl.size * 0.2, cl.size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
+  // Parallax trees — 2-tone leaves + trunk shade
   for (const t of bgTrees) {
     const sx = t.x - game.camera.x * t.layer;
     if (sx < -100 || sx > W + 100) continue;
-    ctx.fillStyle = t.layer < 0.5 ? '#5a4a3a' : '#4a3a2a';
+    const trunkShd = t.layer < 0.5 ? '#3a2a1a' : '#2a1a0a';
+    const trunkMid = t.layer < 0.5 ? '#5a4a3a' : '#4a3a2a';
+    const trunkHi  = t.layer < 0.5 ? '#7a6a4a' : '#6a5a3a';
+    // Trunk with shade on right, mid on left
+    ctx.fillStyle = trunkShd;
     ctx.fillRect(sx - 6, t.y, 12, t.size);
-    ctx.fillStyle = t.layer < 0.5 ? '#6aa866' : '#5a9856';
+    ctx.fillStyle = trunkMid;
+    ctx.fillRect(sx - 5, t.y, 8, t.size);
+    ctx.fillStyle = trunkHi;
+    ctx.fillRect(sx - 5, t.y, 2, t.size);
+    // Leaf shadow
+    const leafDk  = t.layer < 0.5 ? '#3a6a3a' : '#2a5a2a';
+    const leafMid = t.layer < 0.5 ? '#6aa866' : '#5a9856';
+    const leafHi  = t.layer < 0.5 ? '#8fcf7a' : '#7fbf6a';
+    ctx.fillStyle = leafDk;
+    ctx.beginPath();
+    ctx.arc(sx + 2, t.y + 3, t.size * 0.55, 0, Math.PI * 2);
+    ctx.arc(sx - t.size * 0.25, t.y + t.size * 0.15, t.size * 0.42, 0, Math.PI * 2);
+    ctx.arc(sx + t.size * 0.35, t.y + t.size * 0.15, t.size * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    // Main leaves
+    ctx.fillStyle = leafMid;
     ctx.beginPath();
     ctx.arc(sx, t.y, t.size * 0.5, 0, Math.PI * 2);
     ctx.arc(sx - t.size * 0.3, t.y + t.size * 0.1, t.size * 0.4, 0, Math.PI * 2);
     ctx.arc(sx + t.size * 0.3, t.y + t.size * 0.1, t.size * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // Top highlight crescent
+    ctx.fillStyle = leafHi;
+    ctx.beginPath();
+    ctx.arc(sx - t.size * 0.15, t.y - t.size * 0.1, t.size * 0.3, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -8375,6 +8443,16 @@ function drawTownDecor() {
     // Wall top shadow strip
     ctx.fillStyle = b.wallDark;
     ctx.fillRect(sx, wallTop, b.w, 2);
+    // Half-timber beam on the right-hand (shadow) side — adds depth
+    ctx.fillStyle = b.wallDark;
+    ctx.fillRect(sx + b.w - 8, wallTop + 4, 2, b.h - 18);
+    // Subtle wall gradient (light top → darker floor) for ambient shading
+    const wallGrad = ctx.createLinearGradient(0, wallTop, 0, wallTop + b.h);
+    wallGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+    wallGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
+    wallGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+    ctx.fillStyle = wallGrad;
+    ctx.fillRect(sx + 4, wallTop + 2, b.w - 4, b.h - 12);
 
     // Windows (cross-frame)
     const winY = wallTop + 36;
@@ -8398,6 +8476,31 @@ function drawTownDecor() {
     ctx.fillRect(sx + 16, winY + winSize + 1, winSize + 8, 3);
     ctx.fillStyle = '#5a3018';
     ctx.fillRect(sx + 16, winY + winSize + 1, winSize + 8, 1);
+    // Shutters on either side (2-tone wood slats) — gives character to each shop
+    const shCol = b.roofDark, shHi = b.roof;
+    ctx.fillStyle = shCol;
+    ctx.fillRect(sx + 12, winY - 2, 6, winSize + 4);
+    ctx.fillRect(sx + 52, winY - 2, 6, winSize + 4);
+    ctx.fillStyle = shHi;
+    ctx.fillRect(sx + 12, winY - 2, 6, 1);
+    ctx.fillRect(sx + 52, winY - 2, 6, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(sx + 13, winY - 1, 1, winSize + 2);
+    ctx.fillRect(sx + 53, winY - 1, 1, winSize + 2);
+    // Planter box below left window
+    ctx.fillStyle = '#4a2810';
+    ctx.fillRect(sx + 16, winY + winSize + 5, winSize + 8, 5);
+    ctx.fillStyle = '#6a3a18';
+    ctx.fillRect(sx + 16, winY + winSize + 5, winSize + 8, 1);
+    ctx.fillStyle = '#77bb55';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(sx + 19 + i * 8, winY + winSize + 3, 2, 3);
+    }
+    // Flower pops
+    ctx.fillStyle = '#ff88aa';
+    ctx.fillRect(sx + 19, winY + winSize + 2, 2, 2);
+    ctx.fillStyle = '#ffdd44';
+    ctx.fillRect(sx + 35, winY + winSize + 2, 2, 2);
 
     // Right window (same pattern)
     const rx = sx + b.w - 50;
@@ -8416,6 +8519,29 @@ function drawTownDecor() {
     ctx.fillRect(rx - 4, winY + winSize + 1, winSize + 8, 3);
     ctx.fillStyle = '#5a3018';
     ctx.fillRect(rx - 4, winY + winSize + 1, winSize + 8, 1);
+    // Right shutters
+    ctx.fillStyle = b.roofDark;
+    ctx.fillRect(rx - 8, winY - 2, 6, winSize + 4);
+    ctx.fillRect(rx + winSize + 2, winY - 2, 6, winSize + 4);
+    ctx.fillStyle = b.roof;
+    ctx.fillRect(rx - 8, winY - 2, 6, 1);
+    ctx.fillRect(rx + winSize + 2, winY - 2, 6, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(rx - 7, winY - 1, 1, winSize + 2);
+    ctx.fillRect(rx + winSize + 3, winY - 1, 1, winSize + 2);
+    // Right planter box
+    ctx.fillStyle = '#4a2810';
+    ctx.fillRect(rx - 4, winY + winSize + 5, winSize + 8, 5);
+    ctx.fillStyle = '#6a3a18';
+    ctx.fillRect(rx - 4, winY + winSize + 5, winSize + 8, 1);
+    ctx.fillStyle = '#77bb55';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(rx - 1 + i * 8, winY + winSize + 3, 2, 3);
+    }
+    ctx.fillStyle = '#ffaa55';
+    ctx.fillRect(rx - 1, winY + winSize + 2, 2, 2);
+    ctx.fillStyle = '#88ccff';
+    ctx.fillRect(rx + 15, winY + winSize + 2, 2, 2);
 
     // Door
     const doorX = sx + b.w/2 - 16;
@@ -8453,34 +8579,57 @@ function drawTownDecor() {
     ctx.fillStyle = '#2a1408';
     ctx.fillText(b.sign, sx + b.w/2, 480 - 42);
 
-    // Roof (triangle with shingles)
+    // Roof — 3-tone curved shingles with peak highlight
+    // Shadow under-eave
     ctx.fillStyle = b.roofDark;
     ctx.beginPath();
     ctx.moveTo(sx - 14, wallTop + 1);
     ctx.lineTo(sx + b.w/2, wallTop - 44);
     ctx.lineTo(sx + b.w + 14, wallTop + 1);
     ctx.closePath(); ctx.fill();
+    // Main roof fill
     ctx.fillStyle = b.roof;
     ctx.beginPath();
     ctx.moveTo(sx - 12, wallTop);
     ctx.lineTo(sx + b.w/2, wallTop - 42);
     ctx.lineTo(sx + b.w + 12, wallTop);
     ctx.closePath(); ctx.fill();
-    // Roof shingle lines
+    // Curved shingle row arcs (gives tiled look)
+    ctx.strokeStyle = b.roofDark;
+    ctx.lineWidth = 1;
     for (let i = 0; i < 4; i++) {
       const y = wallTop - i * 10;
       const w = Math.max(0, b.w + 24 - i * 20);
-      ctx.fillStyle = b.roofDark;
-      ctx.fillRect(sx + b.w/2 - w/2, y - 1, w, 1);
+      ctx.beginPath();
+      for (let xx = 0; xx < w; xx += 10) {
+        const px0 = sx + b.w/2 - w/2 + xx;
+        ctx.moveTo(px0, y - 1);
+        ctx.quadraticCurveTo(px0 + 5, y - 3, px0 + 10, y - 1);
+      }
+      ctx.stroke();
     }
-    // Roof highlight on left side
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    // Left-face highlight (sunlit slope)
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.beginPath();
     ctx.moveTo(sx - 10, wallTop - 1);
     ctx.lineTo(sx + b.w/2 - 2, wallTop - 40);
     ctx.lineTo(sx + b.w/2 - 5, wallTop - 38);
     ctx.lineTo(sx - 4, wallTop - 1);
     ctx.closePath(); ctx.fill();
+    // Right-face shadow (ambient side)
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(sx + b.w + 10, wallTop - 1);
+    ctx.lineTo(sx + b.w/2 + 2, wallTop - 40);
+    ctx.lineTo(sx + b.w/2 + 5, wallTop - 38);
+    ctx.lineTo(sx + b.w + 4, wallTop - 1);
+    ctx.closePath(); ctx.fill();
+    // Roof ridge beam (horizontal line between slopes)
+    ctx.fillStyle = b.roofDark;
+    ctx.fillRect(sx + b.w/2 - 2, wallTop - 44, 4, 2);
+    // Bright ridge cap
+    ctx.fillStyle = 'rgba(255,240,200,0.55)';
+    ctx.fillRect(sx + b.w/2 - 1, wallTop - 44, 2, 1);
     // Chimney
     ctx.fillStyle = '#6a4a2a';
     ctx.fillRect(sx + b.w - 30, wallTop - 28, 12, 22);
