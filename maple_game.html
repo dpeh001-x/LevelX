@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.0';
+const GAME_VERSION = 'v0.9.1';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -7978,8 +7978,19 @@ function updateCamera() {
 // =========================================================================
 // DRAWING
 // =========================================================================
+// Global ambient background image — stretched to fill the canvas if loaded.
+// Drop 'backgrounds/main_bg.png' into the repo and it activates automatically.
+const BG_IMG = (typeof Image !== 'undefined') ? new Image() : null;
+if (BG_IMG) {
+  BG_IMG._loaded = false;
+  BG_IMG.onload = () => { BG_IMG._loaded = true; };
+  BG_IMG.onerror = () => { BG_IMG._loaded = false; };
+  BG_IMG.src = 'backgrounds/main_bg.png';
+}
+
 function drawBackground() {
-  // Sky gradient
+  // Sky gradient (fallback + used under the image if the image is partially
+  // transparent; also lets special maps keep their themes)
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   const [a,b,c] = game.mapData.sky;
   grad.addColorStop(0, a); grad.addColorStop(0.6, b); grad.addColorStop(1, c);
@@ -7988,6 +7999,20 @@ function drawBackground() {
   // Sanctum cosmic background — skip normal mountains/clouds/trees
   if (game.mapData.sanctum) {
     drawSanctumCosmos();
+    if (game.mapData.isBossArena) drawBossDecor();
+    return;
+  }
+
+  // Full-canvas background image (stretched to fill) — gentle camera parallax
+  if (BG_IMG && BG_IMG._loaded && !game.mapData.isTown && !game.mapData.singularity) {
+    const parallax = 0.12;
+    const shift = (game.camera.x * parallax) % W;
+    ctx.drawImage(BG_IMG, -shift, 0, W, H);
+    ctx.drawImage(BG_IMG, W - shift, 0, W, H);
+    // Subtle atmospheric haze so foreground characters still pop
+    ctx.fillStyle = 'rgba(20,24,48,0.18)';
+    ctx.fillRect(0, 0, W, H);
+    // Keep boss-arena decor on top if applicable
     if (game.mapData.isBossArena) drawBossDecor();
     return;
   }
