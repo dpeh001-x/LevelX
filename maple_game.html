@@ -23,26 +23,26 @@
     box-shadow: 0 0 50px rgba(150, 100, 230, 0.5);
     overflow: hidden;
   }
-  /* Subtle CRT scanline overlay — horizontal dark lines every 3 px */
+  /* Very faint scanline for texture only — modern games keep it ≤ 4% alpha */
   .game-wrapper::before {
     content: ''; position: absolute; inset: 0;
     background: repeating-linear-gradient(
       to bottom,
       rgba(0,0,0,0)    0px, rgba(0,0,0,0)    2px,
-      rgba(0,0,0,0.13) 2px, rgba(0,0,0,0.13) 3px
+      rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 3px
     );
     pointer-events: none;
     z-index: 40;
     mix-blend-mode: multiply;
   }
-  /* Vignette — darker edges, brighter centre for cinematic framing */
+  /* Gentle vignette — modern cinematic framing, not heavy retro darkening */
   .game-wrapper::after {
     content: ''; position: absolute; inset: 0;
     background: radial-gradient(
       ellipse at center,
-      rgba(0,0,0,0)    55%,
-      rgba(0,0,0,0.25) 85%,
-      rgba(0,0,0,0.45) 100%
+      rgba(0,0,0,0)    65%,
+      rgba(0,0,0,0.15) 90%,
+      rgba(0,0,0,0.30) 100%
     );
     pointer-events: none;
     z-index: 41;
@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.2';
+const GAME_VERSION = 'v0.9.3';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -2710,6 +2710,7 @@ function loadMap(id, entryX) {
   game.powerupOrbs = [];
   game.afterImages = [];
   game.ambient = [];
+  game.smoothFx = [];
   game.npcs = (game.mapData.npcs || []).map(n => ({ ...n, y: 436 }));
   game.portals = game.mapData.portals || [];
   if (entryX !== undefined) {
@@ -3796,6 +3797,165 @@ function pixelBurst(pattern, x, y, facing, opts) {
       push(x + f * i * 3 - f * 4, y + 2 - i, f * spd, 0, col2);
     }
   }
+}
+
+// =========================================================================
+// SMOOTH FX — modern, defined, animated skill effects (gradients + arcs)
+// Kept in world-space; camera applied at draw time.
+// =========================================================================
+function spawnSmoothSlash(x, y, angle, length, color, opts) {
+  opts = opts || {};
+  if (!game.smoothFx) game.smoothFx = [];
+  game.smoothFx.push({
+    type: 'slash', x, y, angle, length, color,
+    life: opts.life || 18, maxLife: opts.life || 18,
+    thickness: opts.thickness || 6,
+    spread: opts.spread || Math.PI * 0.9,
+  });
+}
+function spawnSmoothExplosion(x, y, radius, coreCol, edgeCol, opts) {
+  opts = opts || {};
+  if (!game.smoothFx) game.smoothFx = [];
+  game.smoothFx.push({
+    type: 'explosion', x, y,
+    radius: 0, maxRadius: radius,
+    coreCol, edgeCol,
+    life: opts.life || 22, maxLife: opts.life || 22,
+  });
+}
+function spawnSmoothBeam(x, y, angle, length, width, color, opts) {
+  opts = opts || {};
+  if (!game.smoothFx) game.smoothFx = [];
+  game.smoothFx.push({
+    type: 'beam', x, y, angle, length, width, color,
+    life: opts.life || 14, maxLife: opts.life || 14,
+  });
+}
+function spawnSmoothImpact(x, y, color) {
+  if (!game.smoothFx) game.smoothFx = [];
+  game.smoothFx.push({
+    type: 'impact', x, y, color,
+    life: 16, maxLife: 16,
+    rot: Math.random() * Math.PI,
+  });
+}
+
+function updateSmoothFx(dt) {
+  if (!game.smoothFx) return;
+  for (let i = game.smoothFx.length - 1; i >= 0; i--) {
+    const fx = game.smoothFx[i];
+    fx.life -= 1;
+    if (fx.type === 'explosion') {
+      // Ease-out expansion
+      const t = 1 - fx.life / fx.maxLife;
+      fx.radius = fx.maxRadius * (1 - Math.pow(1 - t, 3));
+    }
+    if (fx.life <= 0) game.smoothFx.splice(i, 1);
+  }
+}
+
+function drawSmoothFx() {
+  if (!game.smoothFx || !game.smoothFx.length) return;
+  const camX = game.camera.x;
+  ctx.save();
+  for (const fx of game.smoothFx) {
+    const alpha = Math.min(1, fx.life / Math.max(6, fx.maxLife * 0.6));
+    const sx = fx.x - camX;
+    if (sx < -200 || sx > W + 200) continue;
+    if (fx.type === 'slash') {
+      // Stacked arcs for a clean energy crescent
+      const t = 1 - fx.life / fx.maxLife;
+      const grow = 0.6 + t * 0.4;
+      const r = fx.length * grow;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(sx, fx.y);
+      ctx.rotate(fx.angle);
+      // Outer glow
+      ctx.strokeStyle = fx.color;
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.lineWidth = fx.thickness * 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, r, -fx.spread/2, fx.spread/2); ctx.stroke();
+      // Mid
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.lineWidth = fx.thickness * 1.4;
+      ctx.beginPath(); ctx.arc(0, 0, r, -fx.spread/2 + 0.05, fx.spread/2 - 0.05); ctx.stroke();
+      // Core (white-hot)
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.lineWidth = Math.max(2, fx.thickness * 0.5);
+      ctx.beginPath(); ctx.arc(0, 0, r, -fx.spread/2 + 0.15, fx.spread/2 - 0.15); ctx.stroke();
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (fx.type === 'explosion') {
+      const r = fx.radius;
+      if (r < 1) continue;
+      ctx.globalCompositeOperation = 'lighter';
+      const grad = ctx.createRadialGradient(sx, fx.y, 0, sx, fx.y, r);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.25, fx.coreCol);
+      grad.addColorStop(0.7, fx.edgeCol);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(sx, fx.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (fx.type === 'beam') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(sx, fx.y);
+      ctx.rotate(fx.angle);
+      const len = fx.length, w = fx.width;
+      // Outer halo
+      const g1 = ctx.createLinearGradient(0, -w, 0, w);
+      g1.addColorStop(0, 'rgba(255,255,255,0)');
+      g1.addColorStop(0.5, fx.color);
+      g1.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = alpha * 0.4;
+      ctx.fillStyle = g1;
+      ctx.fillRect(0, -w, len, w * 2);
+      // Hot core
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = alpha * 0.85;
+      ctx.fillRect(0, -w * 0.25, len, w * 0.5);
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+    } else if (fx.type === 'impact') {
+      // Expanding star-burst flash — 4-point with soft radial
+      const t = 1 - fx.life / fx.maxLife;
+      const size = 14 + t * 30;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(sx, fx.y);
+      ctx.rotate(fx.rot);
+      // Radial glow
+      const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+      g2.addColorStop(0, '#ffffff');
+      g2.addColorStop(0.3, fx.color);
+      g2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(0, 0, size, 0, Math.PI * 2); ctx.fill();
+      // 4-point lens-flare cross
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-size, 0); ctx.lineTo(size, 0);
+      ctx.moveTo(0, -size); ctx.lineTo(0, size);
+      ctx.stroke();
+      // Thinner diagonal cross
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.6, -size * 0.6); ctx.lineTo(size * 0.6, size * 0.6);
+      ctx.moveTo(-size * 0.6, size * 0.6); ctx.lineTo(size * 0.6, -size * 0.6);
+      ctx.stroke();
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function spawnFx(sheetKey, skillKey, x, y, facing, opts) {
@@ -5274,9 +5434,21 @@ function performMelee(range, dmgPct, opts = {}) {
       if (opts.kb) m.vx += player.facing * opts.kb;
       if (opts.vy) m.vy += opts.vy;
       if (opts.stun) m.stunTimer = Math.max(m.stunTimer || 0, opts.stun);
+      // Bright modern impact flash at each hit
+      spawnSmoothImpact(m.x + m.w/2, m.y + m.h/2, crit ? '#ffee66' : (opts.color || '#ffffff'));
       hits++;
     }
   }
+  // Always draw a slash arc for the swing itself — modern energy crescent
+  const slashAng = player.facing > 0 ? 0 : Math.PI;
+  spawnSmoothSlash(
+    player.x + player.w/2 + player.facing * range * 0.35,
+    player.y + player.h/2,
+    slashAng,
+    range * 0.55,
+    opts.color || '#ffffff',
+    { thickness: 5 + Math.min(6, dmgPct * 2), spread: Math.PI * 0.85, life: 16 }
+  );
   const burst = opts.burst || 6;
   for (let i = 0; i < burst; i++) {
     game.particles.push({
@@ -5310,6 +5482,7 @@ function performAround(radius, dmgPct, opts = {}) {
       const dmg = Math.floor((getAtk() * dmgPct + Math.random() * 8) * (crit ? getCritDmg() : 1));
       hitMonster(m, dmg, crit, 'aoe');
       applyEnhOnHit(m, dmg, enh);
+      spawnSmoothImpact(m.x + m.w/2, m.y + m.h/2, opts.color || '#ffffff');
       if (opts.kb) {
         const ang = Math.atan2(dy, dx);
         m.vx += Math.cos(ang) * opts.kb;
@@ -5317,6 +5490,15 @@ function performAround(radius, dmgPct, opts = {}) {
       }
     }
   }
+  // Modern radial shockwave explosion at the player's centre
+  const col = opts.color || '#ffffff';
+  spawnSmoothExplosion(
+    player.x + player.w/2, player.y + player.h/2,
+    radius,
+    col,
+    col.length === 7 ? col + '80' : 'rgba(255,255,255,0.4)',
+    { life: 24 }
+  );
 }
 
 // Apply per-hit effects from the current basic-skill job enhancement.
@@ -6772,6 +6954,10 @@ function updateProjectiles(dt) {
           life: 32, color: p.color || '#ff8844', size: 3 + Math.random() * 3
         });
       }
+      // Modern gradient explosion + lens-flare impact
+      const ecol = p.color || '#ff8844';
+      spawnSmoothExplosion(ecx, ecy, p.explode, ecol, ecol + '66', { life: 28 });
+      spawnSmoothImpact(ecx, ecy, ecol);
       addShake(6); flash(0.22);
     }
     if (hit || p.life <= 0 || p.x < 0 || p.x > game.mapData.worldWidth || p.y > H + 50) {
@@ -11989,6 +12175,7 @@ function loop(time) {
     updateProjectiles(dt);
     updateParticles(dt);
     updateFxInstances(dt);
+    updateSmoothFx(dt);
     updatePowerupOrbs(dt);
     updateAmbient();
     updateCamera();
@@ -11996,6 +12183,7 @@ function loop(time) {
     updateCamera();
     updateParticles(dt);
     updateFxInstances(dt);
+    updateSmoothFx(dt);
     updateAmbient();
   }
 
@@ -12027,6 +12215,7 @@ function loop(time) {
   drawPet();
   drawParticles();
   drawFxInstances();
+  drawSmoothFx();
   drawDamageNumbers();
 
   ctx.restore();
