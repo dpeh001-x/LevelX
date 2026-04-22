@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.3';
+const GAME_VERSION = 'v0.9.4';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -9098,207 +9098,229 @@ function drawPortals() {
   }
 }
 
+// Per-role palette / flavour for NPC chibis — reuses CUTE_PAL values
+const NPC_ROLE_CFG = {
+  potion:  { body:'#cc4466', bodyShd:'#8a2848', body2:'#ff7799', hair:'#cc4422', hairHi:'#ee6644', hat:'pigtails' },
+  weapon:  { body:'#5a3018', bodyShd:'#3a1a08', body2:'#8a5030', hair:'#2a1a08', hairHi:'#4a2a18', hat:'bandana' },
+  skills:  { body:'#e88a22', bodyShd:'#a25a10', body2:'#ffaa44', hair:'#aaaaba', hairHi:'#cccde0', hat:'topknot' },
+  sage:    { body:'#4a2488', bodyShd:'#2a1058', body2:'#6a44a8', hair:'#c0c0d0', hairHi:'#ffffff', hat:'wizard' },
+  info:    { body:'#6aaa88', bodyShd:'#3a7a58', body2:'#8accaa', hair:'#5a4422', hairHi:'#8a6a32', hat:'cap'    },
+  caravan: { body:'#e8b85a', bodyShd:'#a28830', body2:'#ffd880', hair:'#3a2820', hairHi:'#5a3828', hat:'scarf'  },
+};
+
 function drawNPCs() {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
   for (const npc of game.npcs) {
-    const sx = Math.round(npc.x - game.camera.x);
-    const bx = sx - 12;
-    const npcY = Math.round(npc.y);
-    if (sx + 40 < 0 || sx - 40 > W) continue;
-    const bob = Math.floor(Math.sin((game.time + npc.x) * 0.05) * 1);
+    const cx = Math.round(npc.x - game.camera.x);
+    const feetY = Math.round(npc.y + 44);      // feet line
+    if (cx + 40 < 0 || cx - 40 > W) continue;
+    const hb = Math.round(Math.sin((game.time + npc.x) * 0.06) * 2);  // head bobble
 
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(sx, 480, 15, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, feetY + 2, 13, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // === LEGS / FEET ===
-    px(bx + 1, npcY + 4 + bob, 8, 13, '#1a1030');
-    px(bx + 2, npcY + 4 + bob, 7, 12, '#4a3a6a');
-    px(bx + 2, npcY + 4 + bob, 2, 12, '#6a5a8a');
-    px(bx + 14, npcY + 4 + bob, 8, 13, '#1a1030');
-    px(bx + 14, npcY + 4 + bob, 7, 12, '#4a3a6a');
-    px(bx + 14, npcY + 4 + bob, 2, 12, '#6a5a8a');
-    // Boots
-    px(bx + 1, npcY + 15 + bob, 8, 3, '#2a1808');
-    px(bx + 14, npcY + 15 + bob, 8, 3, '#2a1808');
+    // Re-centre coords so everything draws around (cx, feetY)
+    // Treat the NPC as a 32-wide figure centred on cx; feet at feetY.
+    const sx = cx - 16;
 
-    // === BODY ===
-    px(bx, npcY - 24 + bob, 24, 28, '#1a0810');
-    px(bx + 1, npcY - 24 + bob, 22, 27, npc.color);
-    // Body highlight (left side)
-    px(bx + 1, npcY - 24 + bob, 3, 27, shadeColor(npc.color, 30));
-    // Body shadow (right side)
-    px(bx + 19, npcY - 24 + bob, 3, 27, shadeColor(npc.color, -30));
+    // === LEGS + BOOTS ===
+    px(sx + 9, feetY - 10, 5, 6, CUTE_PAL.pants);
+    px(sx + 18, feetY - 10, 5, 6, CUTE_PAL.pants);
+    px(sx + 9, feetY - 10, 1, 6, CUTE_PAL.pantsShd);
+    px(sx + 18, feetY - 10, 1, 6, CUTE_PAL.pantsShd);
+    px(sx + 8, feetY - 4, 7, 4, CUTE_PAL.boot);
+    px(sx + 17, feetY - 4, 7, 4, CUTE_PAL.boot);
+    px(sx + 8, feetY - 4, 7, 1, CUTE_PAL.bootTop);
+    px(sx + 17, feetY - 4, 7, 1, CUTE_PAL.bootTop);
+    px(sx + 8, feetY - 1, 7, 1, CUTE_PAL.outline);
+    px(sx + 17, feetY - 1, 7, 1, CUTE_PAL.outline);
 
-    // Role-specific gear
-    if (npc.role === 'potion') {
-      // Apron (white)
-      px(bx + 3, npcY - 14 + bob, 18, 16, '#f0f0e8');
-      px(bx + 3, npcY - 14 + bob, 18, 1, '#ffffff');
-      px(bx + 3, npcY - 14 + bob, 1, 16, '#c0c0b8');
-      // Potion bottle in hand
-      px(bx + 16, npcY - 8 + bob, 4, 2, '#3a2a08');
-      px(bx + 15, npcY - 6 + bob, 6, 6, '#ff3344');
-      px(bx + 15, npcY - 6 + bob, 6, 1, '#ff6677');
-      // Bubbles
-      px(bx + 16, npcY - 5 + bob, 1, 1, '#ffffff');
-      px(bx + 18, npcY - 3 + bob, 1, 1, '#ffffff');
-    } else if (npc.role === 'weapon') {
-      // Brown leather apron
-      px(bx + 4, npcY - 16 + bob, 16, 18, '#5a3018');
-      px(bx + 4, npcY - 16 + bob, 16, 1, '#8a5030');
-      // Apron straps
-      px(bx + 5, npcY - 24 + bob, 2, 8, '#3a1a08');
-      px(bx + 17, npcY - 24 + bob, 2, 8, '#3a1a08');
-      // Hammer
-      px(bx + 20, npcY - 18 + bob, 1, 10, '#4a2810');
-      px(bx + 19, npcY - 22 + bob, 5, 4, '#5a5a6a');
-      px(bx + 19, npcY - 22 + bob, 5, 1, '#8a8a9a');
-    } else if (npc.role === 'skills') {
-      // Martial arts gi
-      px(bx + 3, npcY - 14 + bob, 18, 16, '#e88a22');
-      px(bx + 3, npcY - 14 + bob, 18, 1, '#ffaa44');
-      // Black belt
-      px(bx + 3, npcY - 2 + bob, 18, 3, '#1a0810');
-      px(bx + 3, npcY - 2 + bob, 18, 1, '#3a2818');
-      // Buckle
-      px(bx + 11, npcY - 2 + bob, 2, 3, '#ffcc44');
-    } else if (npc.role === 'sage') {
-      // Robe with stars
-      px(bx + 2, npcY - 20 + bob, 20, 24, '#4a2488');
-      px(bx + 2, npcY - 20 + bob, 20, 1, '#6a44a8');
-      // Star decorations
-      px(bx + 6, npcY - 14 + bob, 1, 1, '#ffee88');
-      px(bx + 16, npcY - 10 + bob, 1, 1, '#ffee88');
-      px(bx + 10, npcY - 4 + bob, 1, 1, '#ffee88');
-      // Orb
-      ctx.fillStyle = 'rgba(180,120,255,0.5)';
-      ctx.beginPath(); ctx.arc(bx + 17, npcY - 8 + bob, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#cc99ff';
-      ctx.beginPath(); ctx.arc(bx + 17, npcY - 8 + bob, 2, 0, Math.PI * 2); ctx.fill();
-      px(bx + 16, npcY - 9 + bob, 1, 1, '#ffffff');
-    } else {
-      // Plain tunic
-      px(bx + 3, npcY - 14 + bob, 18, 16, shadeColor(npc.color, -15));
-      // Belt
-      px(bx + 3, npcY - 2 + bob, 18, 2, '#3a2010');
+    const rcfg = NPC_ROLE_CFG[npc.role] || NPC_ROLE_CFG.info;
+
+    // === TORSO (slim chibi) ===
+    const topY = feetY - 28;
+    px(sx + 6, topY, 20, 1, CUTE_PAL.outline);
+    px(sx + 7, topY + 1, 18, 2, rcfg.body2);
+    // Chest
+    px(sx + 7, topY + 3, 18, 5, rcfg.body);
+    px(sx + 7, topY + 3, 2, 5, rcfg.bodyShd);
+    // Mid
+    px(sx + 8, topY + 8, 16, 4, rcfg.body);
+    px(sx + 8, topY + 8, 2, 4, rcfg.bodyShd);
+    // Waist
+    px(sx + 9, topY + 12, 14, 2, rcfg.body);
+    px(sx + 9, topY + 12, 2, 2, rcfg.bodyShd);
+    // Stepped outline
+    px(sx + 6, topY, 1, 3, CUTE_PAL.outline);
+    px(sx + 25, topY, 1, 3, CUTE_PAL.outline);
+    px(sx + 7, topY + 3, 1, 5, CUTE_PAL.outline);
+    px(sx + 24, topY + 3, 1, 5, CUTE_PAL.outline);
+    px(sx + 8, topY + 8, 1, 4, CUTE_PAL.outline);
+    px(sx + 23, topY + 8, 1, 4, CUTE_PAL.outline);
+    px(sx + 9, topY + 12, 1, 2, CUTE_PAL.outline);
+    px(sx + 22, topY + 12, 1, 2, CUTE_PAL.outline);
+
+    // Role-coloured trim / collar
+    if (npc.role === 'potion' || npc.role === 'info' || npc.role === 'caravan') {
+      px(sx + 12, topY + 3, 8, 1, CUTE_PAL.trim);
+      px(sx + 13, topY + 4, 6, 1, CUTE_PAL.trim);
+      px(sx + 14, topY + 5, 4, 7, CUTE_PAL.trim);
     }
-
-    // === HEAD ===
-    // Face outline
-    px(bx + 1, npcY - 39 + bob, 22, 17, '#2a1a08');
-    px(bx + 2, npcY - 38 + bob, 20, 16, '#f0c090');
-    // Face highlight
-    px(bx + 2, npcY - 38 + bob, 20, 1, '#ffd8a8');
-    // Chin shadow
-    px(bx + 2, npcY - 25 + bob, 20, 2, '#d89868');
-
-    // Hair per role
-    if (npc.role === 'potion') {
-      // Red curls + pigtails
-      px(bx + 1, npcY - 42 + bob, 22, 6, '#cc4422');
-      px(bx + 1, npcY - 42 + bob, 22, 2, '#ee6644');
-      // Pigtails
-      px(bx - 2, npcY - 34 + bob, 4, 8, '#cc4422');
-      px(bx + 22, npcY - 34 + bob, 4, 8, '#cc4422');
-      px(bx - 2, npcY - 26 + bob, 4, 2, '#881a08');
-      px(bx + 22, npcY - 26 + bob, 4, 2, '#881a08');
-    } else if (npc.role === 'weapon') {
-      // Dark hair + beard + bandana
-      px(bx + 1, npcY - 42 + bob, 22, 5, '#cc3322');  // red bandana
-      px(bx + 1, npcY - 42 + bob, 22, 1, '#ff5544');
-      px(bx + 3, npcY - 40 + bob, 2, 2, '#8a1a08'); // knot
-      // Beard
-      px(bx + 4, npcY - 30 + bob, 16, 8, '#2a1a08');
-      px(bx + 4, npcY - 30 + bob, 16, 1, '#4a2a18');
-      px(bx + 10, npcY - 25 + bob, 4, 1, '#f0c090'); // mouth gap
-    } else if (npc.role === 'skills') {
-      // Grey topknot + white beard
-      px(bx + 3, npcY - 42 + bob, 18, 4, '#6a6a7a');
-      // Topknot
-      px(bx + 10, npcY - 46 + bob, 4, 5, '#6a6a7a');
-      px(bx + 11, npcY - 46 + bob, 2, 2, '#8a8a9a');
-      // Long white beard
-      px(bx + 4, npcY - 28 + bob, 16, 10, '#ffffff');
-      px(bx + 4, npcY - 28 + bob, 16, 1, '#f0f0e8');
-      px(bx + 8, npcY - 20 + bob, 8, 4, '#e0e0d8'); // shadow
-    } else if (npc.role === 'sage') {
-      // Silver hair + pointed hat
-      px(bx + 1, npcY - 40 + bob, 22, 4, '#c0c0d0');
-      // Pointed hat
-      ctx.fillStyle = '#4a2488';
-      ctx.beginPath();
-      ctx.moveTo(bx - 2, npcY - 40 + bob);
-      ctx.lineTo(bx + 12, npcY - 58 + bob);
-      ctx.lineTo(bx + 26, npcY - 40 + bob);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#6a44a8';
-      ctx.beginPath();
-      ctx.moveTo(bx - 1, npcY - 40 + bob);
-      ctx.lineTo(bx + 12, npcY - 56 + bob);
-      ctx.lineTo(bx + 14, npcY - 55 + bob);
-      ctx.lineTo(bx, npcY - 40 + bob);
-      ctx.closePath(); ctx.fill();
-      // Star on hat
-      px(bx + 11, npcY - 48 + bob, 2, 1, '#ffee88');
-      px(bx + 10, npcY - 47 + bob, 4, 1, '#ffee88');
-      px(bx + 11, npcY - 46 + bob, 2, 1, '#ffee88');
-    } else {
-      // Flat cap + white stubble
-      px(bx + 1, npcY - 42 + bob, 22, 5, '#5a4422');
-      px(bx + 1, npcY - 42 + bob, 22, 1, '#8a6a32');
-      // Cap brim
-      px(bx - 1, npcY - 38 + bob, 24, 2, '#3a2810');
-      // Stubble
-      for (let i = 0; i < 6; i++) {
-        px(bx + 6 + i * 2, npcY - 28 + bob, 1, 1, '#c0c0c0');
-      }
-      // Pipe
-      px(bx + 16, npcY - 25 + bob, 5, 1, '#3a1a08');
-      px(bx + 20, npcY - 27 + bob, 2, 2, '#6a3a18');
-      // Smoke
-      ctx.fillStyle = 'rgba(200,200,200,0.5)';
-      const st = (game.time + npc.x) * 0.03;
-      ctx.beginPath(); ctx.arc(bx + 22 + Math.sin(st), npcY - 32 + bob + Math.cos(st), 2, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // Eyes (cute pixel style)
-    px(bx + 7, npcY - 32 + bob, 2, 3, '#1a0810');
-    px(bx + 14, npcY - 32 + bob, 2, 3, '#1a0810');
-    px(bx + 7, npcY - 32 + bob, 1, 1, '#ffffff');
-    px(bx + 14, npcY - 32 + bob, 1, 1, '#ffffff');
-    // Cheek blush
-    px(bx + 4, npcY - 29 + bob, 2, 1, 'rgba(255,180,180,0.6)');
-    px(bx + 18, npcY - 29 + bob, 2, 1, 'rgba(255,180,180,0.6)');
-    // Mouth (smile)
-    if (npc.role !== 'weapon' && npc.role !== 'skills') {
-      px(bx + 10, npcY - 27 + bob, 4, 1, '#8a2a2a');
-      px(bx + 10, npcY - 28 + bob, 1, 1, '#8a2a2a');
-      px(bx + 13, npcY - 28 + bob, 1, 1, '#8a2a2a');
-    }
+    // Belt
+    px(sx + 9, topY + 14, 14, 2, CUTE_PAL.belt);
+    px(sx + 13, topY + 14, 6, 2, CUTE_PAL.gold);
+    px(sx + 13, topY + 14, 6, 1, CUTE_PAL.goldHi);
 
     // Arms
-    px(bx - 2, npcY - 18 + bob, 4, 10, '#1a0810');
-    px(bx - 1, npcY - 18 + bob, 3, 9, npc.color);
-    px(bx + 22, npcY - 18 + bob, 4, 10, '#1a0810');
-    px(bx + 22, npcY - 18 + bob, 3, 9, npc.color);
-    // Hands
-    px(bx - 1, npcY - 8 + bob, 3, 3, '#f0c090');
-    px(bx + 22, npcY - 8 + bob, 3, 3, '#f0c090');
+    px(sx + 5, topY + 2, 2, 8, rcfg.body);
+    px(sx + 5, topY + 2, 2, 1, rcfg.body2);
+    px(sx + 5, topY + 10, 2, 2, CUTE_PAL.skin);
+    px(sx + 25, topY + 2, 2, 8, rcfg.body);
+    px(sx + 25, topY + 2, 2, 1, rcfg.body2);
+    px(sx + 25, topY + 10, 2, 2, CUTE_PAL.skin);
+
+    // Role prop in hand (right side)
+    if (npc.role === 'potion') {
+      // Potion bottle
+      px(sx + 27, topY + 8, 3, 4, '#ff3344');
+      px(sx + 27, topY + 8, 3, 1, '#ff6677');
+      px(sx + 27, topY + 7, 3, 1, '#3a2a08');
+    } else if (npc.role === 'weapon') {
+      // Hammer
+      px(sx + 28, topY + 5, 2, 8, '#4a2810');
+      px(sx + 27, topY + 2, 4, 4, CUTE_PAL.metal);
+      px(sx + 27, topY + 2, 4, 1, CUTE_PAL.metalHi);
+    } else if (npc.role === 'sage') {
+      // Floating orb
+      const op = Math.sin(game.time * 0.08) * 1;
+      ctx.fillStyle = 'rgba(180,120,255,0.55)';
+      ctx.beginPath(); ctx.arc(sx + 28, topY + 4 + op, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cc99ff';
+      ctx.beginPath(); ctx.arc(sx + 28, topY + 4 + op, 2.5, 0, Math.PI * 2); ctx.fill();
+      px(sx + 27, topY + 3, 1, 1, '#ffffff');
+    } else if (npc.role === 'caravan') {
+      // Small rolled map
+      px(sx + 27, topY + 8, 4, 3, '#f0e0b0');
+      px(sx + 27, topY + 8, 4, 1, '#ffeecc');
+      px(sx + 27, topY + 11, 4, 1, '#8a6a3a');
+    }
+
+    // === HEAD (big chibi) ===
+    const headY = feetY - 52;          // anchor for head top
+    // Outline + skin (30 x 24)
+    px(sx + 1, headY + 0 + hb, 30, 24, CUTE_PAL.outline);
+    px(sx + 2, headY + 1 + hb, 28, 22, CUTE_PAL.skin);
+    // Chin shadow
+    px(sx + 3, headY + 20 + hb, 26, 2, CUTE_PAL.skinShd);
+
+    // Hair per role
+    const hat = rcfg.hat;
+    if (hat === 'wizard') {
+      // Pointed purple wizard hat
+      px(sx + 1, headY + hb, 30, 3, CUTE_PAL.outline);
+      px(sx + 2, headY + hb + 1, 28, 2, rcfg.body);
+      px(sx + 2, headY + hb + 1, 28, 1, rcfg.body2);
+      px(sx + 9, headY - 4 + hb, 14, 4, rcfg.body);
+      px(sx + 12, headY - 9 + hb, 8, 5, rcfg.body);
+      px(sx + 15, headY - 14 + hb, 5, 5, rcfg.body);
+      px(sx + 17, headY - 18 + hb, 3, 4, rcfg.body);
+      // Gold star
+      px(sx + 19, headY - 5 + hb, 2, 2, CUTE_PAL.gold);
+      px(sx + 18, headY - 4 + hb, 4, 1, CUTE_PAL.gold);
+      px(sx + 19, headY - 3 + hb, 2, 1, CUTE_PAL.goldHi);
+      // Silver hair peeking under
+      px(sx + 2, headY + 2 + hb, 28, 5, rcfg.hair);
+      px(sx + 2, headY + 2 + hb, 28, 1, rcfg.hairHi);
+    } else if (hat === 'pigtails') {
+      // Red hair + pigtails
+      px(sx + 2, headY - 1 + hb, 28, 9, rcfg.hair);
+      px(sx + 2, headY - 1 + hb, 28, 2, rcfg.hairHi);
+      px(sx + 1, headY + 4 + hb, 3, 13, rcfg.hair);
+      px(sx + 28, headY + 4 + hb, 3, 13, rcfg.hair);
+      // Pigtails hanging down
+      px(sx - 1, headY + 10 + hb, 3, 10, rcfg.hair);
+      px(sx + 30, headY + 10 + hb, 3, 10, rcfg.hair);
+      px(sx - 1, headY + 18 + hb, 3, 2, '#881a08');
+      px(sx + 30, headY + 18 + hb, 3, 2, '#881a08');
+      // Front fringe
+      px(sx + 6, headY + 7 + hb, 8, 4, rcfg.hair);
+      px(sx + 18, headY + 7 + hb, 8, 4, rcfg.hair);
+    } else if (hat === 'bandana') {
+      // Red bandana top + dark beard
+      px(sx + 1, headY - 2 + hb, 30, 5, '#cc3322');
+      px(sx + 1, headY - 2 + hb, 30, 1, '#ff5544');
+      px(sx + 3, headY - 1 + hb, 2, 2, '#8a1a08');   // knot
+      // Side hair
+      px(sx + 1, headY + 3 + hb, 3, 12, rcfg.hair);
+      px(sx + 28, headY + 3 + hb, 3, 12, rcfg.hair);
+      // Beard
+      px(sx + 4, headY + 15 + hb, 24, 8, rcfg.hair);
+      px(sx + 4, headY + 15 + hb, 24, 1, rcfg.hairHi);
+    } else if (hat === 'topknot') {
+      // Grey topknot + white beard
+      px(sx + 2, headY + hb, 28, 5, rcfg.hair);
+      px(sx + 11, headY - 5 + hb, 10, 6, rcfg.hair);
+      px(sx + 13, headY - 7 + hb, 6, 3, rcfg.hair);
+      px(sx + 14, headY - 8 + hb, 4, 2, rcfg.hairHi);
+      // Side bangs
+      px(sx + 1, headY + 4 + hb, 3, 12, rcfg.hair);
+      px(sx + 28, headY + 4 + hb, 3, 12, rcfg.hair);
+      // White beard
+      px(sx + 4, headY + 16 + hb, 24, 7, '#ffffff');
+      px(sx + 4, headY + 16 + hb, 24, 1, '#f0f0e8');
+    } else if (hat === 'cap') {
+      // Flat brown cap
+      px(sx + 1, headY - 2 + hb, 30, 6, rcfg.hair);
+      px(sx + 1, headY - 2 + hb, 30, 1, rcfg.hairHi);
+      // Brim
+      px(sx - 1, headY + 3 + hb, 34, 2, '#3a2810');
+    } else if (hat === 'scarf') {
+      // Travel scarf + messy hair
+      px(sx + 1, headY - 1 + hb, 30, 6, rcfg.hair);
+      px(sx + 1, headY - 1 + hb, 30, 2, rcfg.hairHi);
+      // Neck scarf below head (stripe of gold)
+      px(sx + 8, headY + 20 + hb, 16, 4, CUTE_PAL.gold);
+      px(sx + 8, headY + 20 + hb, 16, 1, CUTE_PAL.goldHi);
+      px(sx + 8, headY + 23 + hb, 16, 1, '#aa7722');
+      // Side bangs
+      px(sx + 1, headY + 4 + hb, 3, 12, rcfg.hair);
+      px(sx + 28, headY + 4 + hb, 3, 12, rcfg.hair);
+    }
+
+    // Eyes (matching player — 2x3 solid black)
+    const blink = (Math.floor((game.time + npc.x * 7) / 180) % 15 === 0);
+    if (blink) {
+      px(sx + 10, headY + 14 + hb, 3, 1, CUTE_PAL.eye);
+      px(sx + 19, headY + 14 + hb, 3, 1, CUTE_PAL.eye);
+    } else {
+      px(sx + 10, headY + 13 + hb, 2, 3, CUTE_PAL.eye);
+      px(sx + 20, headY + 13 + hb, 2, 3, CUTE_PAL.eye);
+    }
+    // Cheek blush
+    ctx.fillStyle = CUTE_PAL.blush;
+    ctx.fillRect(sx + 4, headY + 17 + hb, 3, 2);
+    ctx.fillRect(sx + 25, headY + 17 + hb, 3, 2);
+    // Smile (skip for bearded / stern NPCs)
+    if (hat !== 'bandana' && hat !== 'topknot') {
+      px(sx + 14, headY + 19 + hb, 4, 1, CUTE_PAL.mouth);
+      px(sx + 13, headY + 18 + hb, 1, 1, CUTE_PAL.mouth);
+      px(sx + 18, headY + 18 + hb, 1, 1, CUTE_PAL.mouth);
+    }
 
     // Name tag
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
     const w = ctx.measureText(npc.name).width + 10;
     ctx.fillStyle = 'rgba(20,10,30,0.8)';
-    ctx.fillRect(sx - w/2, npcY - 58, w, 15);
+    ctx.fillRect(cx - w/2, headY - 24, w, 15);
     ctx.strokeStyle = '#886bb8';
     ctx.lineWidth = 1;
-    ctx.strokeRect(sx - w/2, npcY - 58, w, 15);
+    ctx.strokeRect(cx - w/2, headY - 24, w, 15);
     ctx.fillStyle = '#ffdd66';
-    ctx.fillText(npc.name, sx, npcY - 48);
+    ctx.fillText(npc.name, cx, headY - 14);
 
     // Interact prompt
     const near = Math.abs((player.x + player.w/2) - npc.x) < 70;
@@ -9306,7 +9328,7 @@ function drawNPCs() {
       const t = Math.sin(game.time * 0.15) * 3;
       ctx.fillStyle = '#ffdd44';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('[F] Talk', sx, npcY - 70 + t);
+      ctx.fillText('[F] Talk', cx, headY - 36 + t);
     }
   }
 }
@@ -9915,7 +9937,7 @@ function drawCuteCharacter(sx, sy) {
   px(sx + 8, sy + 47 + bb + wc, 7, 1, CUTE_PAL.outline);
   px(sx + 17, sy + 47 + bb - wc, 7, 1, CUTE_PAL.outline);
 
-  // === TORSO (humanoid — wider shoulders, tapered waist) ===
+  // === TORSO (humanoid — slim build, tapered waist) ===
   // Wrap torso drawing in a rotation that pivots at the hips for the swing.
   const hipY = sy + 36 + bb;
   ctx.save();
@@ -9923,63 +9945,57 @@ function drawCuteCharacter(sx, sy) {
   ctx.rotate(swingAng);
   ctx.translate(-cx, -hipY);
 
-  // Shoulders (widest row at the top)
-  const topY = sy + 22 + bb;
-  px(sx + 4, topY, 24, 1, CUTE_PAL.outline);
-  px(sx + 5, topY + 1, 22, 2, cc.body2);
-  // Chest/upper torso (wide)
-  px(sx + 5, topY + 3, 22, 6, cc.body);
-  px(sx + 5, topY + 3, 2, 6, cc.bodyShd);
-  // Mid torso (stepping inward)
-  px(sx + 6, topY + 9, 20, 4, cc.body);
-  px(sx + 6, topY + 9, 2, 4, cc.bodyShd);
-  // Waist (narrowest)
-  px(sx + 7, topY + 13, 18, 3, cc.body);
-  px(sx + 7, topY + 13, 2, 3, cc.bodyShd);
+  // Shoulders (narrower than before — 20 px wide)
+  const topY = sy + 24 + bb;
+  px(sx + 6, topY, 20, 1, CUTE_PAL.outline);
+  px(sx + 7, topY + 1, 18, 2, cc.body2);
+  // Chest (18 wide)
+  px(sx + 7, topY + 3, 18, 5, cc.body);
+  px(sx + 7, topY + 3, 2, 5, cc.bodyShd);
+  // Mid torso (16 wide)
+  px(sx + 8, topY + 8, 16, 4, cc.body);
+  px(sx + 8, topY + 8, 2, 4, cc.bodyShd);
+  // Waist (narrowest — 14 wide)
+  px(sx + 9, topY + 12, 14, 2, cc.body);
+  px(sx + 9, topY + 12, 2, 2, cc.bodyShd);
   // Torso outline (stepped)
-  px(sx + 4, topY, 1, 3, CUTE_PAL.outline);
-  px(sx + 27, topY, 1, 3, CUTE_PAL.outline);
-  px(sx + 5, topY + 3, 1, 6, CUTE_PAL.outline);
-  px(sx + 26, topY + 3, 1, 6, CUTE_PAL.outline);
-  px(sx + 6, topY + 9, 1, 4, CUTE_PAL.outline);
-  px(sx + 25, topY + 9, 1, 4, CUTE_PAL.outline);
-  px(sx + 7, topY + 13, 1, 3, CUTE_PAL.outline);
-  px(sx + 24, topY + 13, 1, 3, CUTE_PAL.outline);
+  px(sx + 6, topY, 1, 3, CUTE_PAL.outline);
+  px(sx + 25, topY, 1, 3, CUTE_PAL.outline);
+  px(sx + 7, topY + 3, 1, 5, CUTE_PAL.outline);
+  px(sx + 24, topY + 3, 1, 5, CUTE_PAL.outline);
+  px(sx + 8, topY + 8, 1, 4, CUTE_PAL.outline);
+  px(sx + 23, topY + 8, 1, 4, CUTE_PAL.outline);
+  px(sx + 9, topY + 12, 1, 2, CUTE_PAL.outline);
+  px(sx + 22, topY + 12, 1, 2, CUTE_PAL.outline);
 
   // White front trim (collar V)
-  px(sx + 11, topY + 3, 10, 1, CUTE_PAL.trim);
-  px(sx + 12, topY + 4, 8, 1, CUTE_PAL.trim);
-  px(sx + 13, topY + 5, 6, 10, CUTE_PAL.trim);
-  px(sx + 13, topY + 5, 1, 10, CUTE_PAL.trimShd);
-  px(sx + 18, topY + 5, 1, 10, CUTE_PAL.trimShd);
+  px(sx + 12, topY + 3, 8, 1, CUTE_PAL.trim);
+  px(sx + 13, topY + 4, 6, 1, CUTE_PAL.trim);
+  px(sx + 14, topY + 5, 4, 7, CUTE_PAL.trim);
+  px(sx + 14, topY + 5, 1, 7, CUTE_PAL.trimShd);
+  px(sx + 17, topY + 5, 1, 7, CUTE_PAL.trimShd);
   // Belt
-  px(sx + 7, sy + 34 + bb, 18, 3, CUTE_PAL.belt);
-  px(sx + 7, sy + 34 + bb, 18, 1, '#8a5a30');
+  px(sx + 9, sy + 36 + bb, 14, 3, CUTE_PAL.belt);
+  px(sx + 9, sy + 36 + bb, 14, 1, '#8a5a30');
   // Belt buckle
-  px(sx + 13, sy + 34 + bb, 6, 3, CUTE_PAL.gold);
-  px(sx + 13, sy + 34 + bb, 6, 1, CUTE_PAL.goldHi);
-  px(sx + 15, sy + 35 + bb, 2, 1, '#aa7722');
-  // Hip pouch
-  px(sx + 22, sy + 36 + bb, 3, 4, CUTE_PAL.pouch);
-  px(sx + 22, sy + 36 + bb, 3, 1, '#c88a50');
-  px(sx + 22, sy + 39 + bb, 3, 1, CUTE_PAL.outline);
+  px(sx + 13, sy + 36 + bb, 6, 3, CUTE_PAL.gold);
+  px(sx + 13, sy + 36 + bb, 6, 1, CUTE_PAL.goldHi);
+  px(sx + 15, sy + 37 + bb, 2, 1, '#aa7722');
+  // Hip pouch (tucked closer for slim build)
+  px(sx + 21, sy + 37 + bb, 3, 4, CUTE_PAL.pouch);
+  px(sx + 21, sy + 37 + bb, 3, 1, '#c88a50');
+  px(sx + 21, sy + 40 + bb, 3, 1, CUTE_PAL.outline);
 
-  // === ARMS ===
-  // Back arm (anchored at shoulder, small downward sleeve)
-  const backX = f > 0 ? sx + 3 : sx + player.w - 5;
+  // === ARMS (thin, anchored at new shoulder positions) ===
+  const backX = f > 0 ? sx + 5 : sx + player.w - 7;
   px(backX, topY + 2, 2, 8, cc.body);
   px(backX, topY + 2, 2, 1, cc.body2);
-  // Back hand
   px(backX, topY + 10, 2, 2, CUTE_PAL.skin);
 
-  // Front arm — swings with weapon
-  const frontX = f > 0 ? sx + player.w - 5 : sx + 3;
-  // Shoulder socket
+  const frontX = f > 0 ? sx + player.w - 7 : sx + 5;
   px(frontX, topY + 2, 2, 3, cc.body2);
-  // Sleeve — during swing it telescopes forward (drawn inside the rotated ctx)
   const sleeveLen = 6 + Math.floor(swingBase * 3);
   px(frontX, topY + 2, 2, sleeveLen, cc.body);
-  // Front hand
   const handY = topY + 2 + sleeveLen;
   px(frontX, handY, 2, 2, CUTE_PAL.skin);
 
@@ -10008,50 +10024,48 @@ function drawCuteCharacter(sx, sy) {
   ctx.rotate(headTilt);
   ctx.translate(-cx, -(sy + 12 + hb));
 
-  // Head outline + skin
-  px(sx + 3, sy + 2 + hb, 26, 22, CUTE_PAL.outline);
-  px(sx + 4, sy + 3 + hb, 24, 20, CUTE_PAL.skin);
+  // Head outline + skin (BIGGER — 30x26, extends beyond player.w for chibi look)
+  px(sx + 1, sy + 0 + hb, 30, 24, CUTE_PAL.outline);
+  px(sx + 2, sy + 1 + hb, 28, 22, CUTE_PAL.skin);
   // Chin shadow
-  px(sx + 5, sy + 19 + hb, 22, 2, CUTE_PAL.skinShd);
+  px(sx + 3, sy + 20 + hb, 26, 2, CUTE_PAL.skinShd);
 
-  // Hair
-  px(sx + 4, sy + 1 + hb, 24, 8, cc.hair);
-  px(sx + 4, sy + 1 + hb, 24, 2, cc.hairHi);
-  px(sx + 3, sy + 4 + hb, 3, 14, cc.hair);
-  px(sx + 26, sy + 4 + hb, 3, 14, cc.hair);
-  px(sx + 3, sy + 4 + hb, 1, 12, cc.hairHi);
-  px(sx + 7, sy + 7 + hb, 7, 4, cc.hair);
-  px(sx + 18, sy + 7 + hb, 7, 4, cc.hair);
-  px(sx + 8, sy + 3 + hb, 3, 2, cc.hairHi);
-  px(sx + 21, sy + 3 + hb, 3, 2, cc.hairHi);
+  // Hair (fills bigger head nicely)
+  px(sx + 2, sy - 1 + hb, 28, 9, cc.hair);
+  px(sx + 2, sy - 1 + hb, 28, 2, cc.hairHi);
+  px(sx + 1, sy + 4 + hb, 3, 15, cc.hair);
+  px(sx + 28, sy + 4 + hb, 3, 15, cc.hair);
+  px(sx + 1, sy + 4 + hb, 1, 13, cc.hairHi);
+  px(sx + 6, sy + 7 + hb, 8, 4, cc.hair);
+  px(sx + 18, sy + 7 + hb, 8, 4, cc.hair);
+  px(sx + 6, sy + 2 + hb, 4, 2, cc.hairHi);
+  px(sx + 22, sy + 2 + hb, 4, 2, cc.hairHi);
 
-  // === EYES — pure black pixel dots, no highlights ===
-  // Blink every few seconds for charm
+  // === EYES — smaller 2×3 solid black dots ===
   const blink = (Math.floor(game.time / 180) % 15 === 0);
   if (blink) {
     // Closed eyes — thin horizontal line
-    px(sx + 9,  sy + 13 + hb, 4, 1, CUTE_PAL.eye);
-    px(sx + 19, sy + 13 + hb, 4, 1, CUTE_PAL.eye);
+    px(sx + 10, sy + 14 + hb, 3, 1, CUTE_PAL.eye);
+    px(sx + 19, sy + 14 + hb, 3, 1, CUTE_PAL.eye);
   } else {
-    // Open eyes — solid 3x4 black rectangles, symmetric
-    px(sx + 10, sy + 12 + hb, 3, 4, CUTE_PAL.eye);
-    px(sx + 19, sy + 12 + hb, 3, 4, CUTE_PAL.eye);
+    // Open eyes — compact 2x3 rectangles, farther apart for bigger head
+    px(sx + 10, sy + 13 + hb, 2, 3, CUTE_PAL.eye);
+    px(sx + 20, sy + 13 + hb, 2, 3, CUTE_PAL.eye);
   }
-  // Rage red override
   if (player.inRage) {
-    px(sx + 11, sy + 13 + hb, 1, 2, '#ff4444');
-    px(sx + 20, sy + 13 + hb, 1, 2, '#ff4444');
+    px(sx + 10, sy + 13 + hb, 2, 3, '#ff4444');
+    px(sx + 20, sy + 13 + hb, 2, 3, '#ff4444');
   }
 
-  // Mouth — little smile
-  px(sx + 14, sy + 18 + hb, 4, 1, CUTE_PAL.mouth);
-  px(sx + 13, sy + 17 + hb, 1, 1, CUTE_PAL.mouth);
-  px(sx + 18, sy + 17 + hb, 1, 1, CUTE_PAL.mouth);
+  // Mouth — little smile (moved slightly lower for bigger head)
+  px(sx + 14, sy + 19 + hb, 4, 1, CUTE_PAL.mouth);
+  px(sx + 13, sy + 18 + hb, 1, 1, CUTE_PAL.mouth);
+  px(sx + 18, sy + 18 + hb, 1, 1, CUTE_PAL.mouth);
 
-  // Cheek blush
+  // Cheek blush (wider + lower to match bigger head)
   ctx.fillStyle = CUTE_PAL.blush;
-  ctx.fillRect(sx + 5, sy + 16 + hb, 3, 2);
-  ctx.fillRect(sx + 24, sy + 16 + hb, 3, 2);
+  ctx.fillRect(sx + 4, sy + 17 + hb, 3, 2);
+  ctx.fillRect(sx + 25, sy + 17 + hb, 3, 2);
 
   // Class hat / helmet — moves with head
   drawCuteHat(sx, sy + hb, cls, cc);
