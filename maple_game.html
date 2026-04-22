@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.7.3';
+const GAME_VERSION = 'v0.8.0';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3604,6 +3604,174 @@ function castSkill(id) {
 function gravMul() { return (game.mapData && game.mapData.gravityMul) || 1; }
 
 // Archer aim — holding UP/DOWN tilts projectiles ~28°
+// =========================================================================
+// SKILL FX SPRITE SHEETS (optional — drop PNGs into /skills to activate)
+// Each sheet is a green-chroma-key grid: rows = skill, columns = frames.
+// =========================================================================
+const FX_CATALOG = {
+  archer: {
+    path: 'skills/archer_fx.png',
+    rows: [
+      { key:'chargedShot', frames: 7 },
+      { key:'arrowRain',   frames: 8 },
+      { key:'multiShot',   frames: 8 },
+      { key:'explosive',   frames: 8 },
+      { key:'phoenix',     frames: 6 },
+    ],
+  },
+  mage: {
+    path: 'skills/mage_fx.png',
+    rows: [
+      { key:'fireball',    frames: 7 },
+      { key:'iceSpike',    frames: 8 },
+      { key:'arcaneBurst', frames: 8 },
+      { key:'lightning',   frames: 6 },
+      { key:'manaShield',  frames: 6 },
+    ],
+  },
+  thief: {
+    path: 'skills/thief_fx.png',
+    rows: [
+      { key:'throwingStar',  frames: 6 },
+      { key:'daggerSlash',   frames: 5 },
+      { key:'shadowMove',    frames: 5 },
+      { key:'venom',         frames: 5 },
+      { key:'mesoExplosion', frames: 5 },
+      { key:'smokeScreen',   frames: 5 },
+    ],
+  },
+  assassin: {
+    path: 'skills/assassin_fx.png',
+    rows: [
+      { key:'luckySeven',    frames: 8 },
+      { key:'tripleThrow',   frames: 10 },
+      { key:'shadowPartner', frames: 7 },
+      { key:'avenger',       frames: 7 },
+      { key:'flashJump',     frames: 4 },
+      { key:'venomPassive',  frames: 6 },
+    ],
+  },
+  warrior: {
+    path: 'skills/warrior_fx.png',
+    rows: [
+      { key:'powerSlash',   frames: 5 },
+      { key:'auraBurst',    frames: 7 },
+      { key:'earthbreaker', frames: 7 },
+      { key:'shieldBash',   frames: 6 },
+      { key:'swordStorm',   frames: 7 },
+    ],
+  },
+};
+const FX_SHEETS = {};
+
+// Strip the bright-green chroma key to transparent
+function chromaKeySheet(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, img.width, img.height);
+    const p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      const r = p[i], gr = p[i+1], b = p[i+2];
+      // Green-screen: dominant G, low R/B
+      if (gr > 140 && r < 150 && b < 150 && (gr - r) > 25 && (gr - b) > 25) {
+        p[i+3] = 0;
+      }
+    }
+    g.putImageData(d, 0, 0);
+    return c;
+  } catch (e) { return img; }
+}
+
+// Load every sheet listed in FX_CATALOG — silently skip if file missing
+for (const sheetKey in FX_CATALOG) {
+  const cfg = FX_CATALOG[sheetKey];
+  const img = new Image();
+  img.onload = () => {
+    const canvas = chromaKeySheet(img);
+    const rowH = canvas.height / cfg.rows.length;
+    const rows = {};
+    for (let i = 0; i < cfg.rows.length; i++) {
+      const r = cfg.rows[i];
+      rows[r.key] = {
+        y: i * rowH,
+        count: r.frames,
+        frameW: canvas.width / r.frames,
+        frameH: rowH,
+      };
+    }
+    FX_SHEETS[sheetKey] = { canvas, rows };
+  };
+  img.onerror = () => {};
+  img.src = cfg.path;
+}
+
+// Spawn an FX instance at world (x,y). opts: {frameMs, scale, follow, followOffX/Y}
+function spawnFx(sheetKey, skillKey, x, y, facing, opts) {
+  if (!game.fxInstances) game.fxInstances = [];
+  opts = opts || {};
+  game.fxInstances.push({
+    sheet: sheetKey, skill: skillKey,
+    x, y, facing: facing || 1,
+    frame: 0, frameTime: 0,
+    frameMs: opts.frameMs || 55,
+    scale: opts.scale || 1,
+    follow: opts.follow || null,
+    followOffX: opts.followOffX || 0,
+    followOffY: opts.followOffY || 0,
+  });
+}
+
+function updateFxInstances(dt) {
+  if (!game.fxInstances) return;
+  for (let i = game.fxInstances.length - 1; i >= 0; i--) {
+    const f = game.fxInstances[i];
+    f.frameTime += dt;
+    while (f.frameTime >= f.frameMs) {
+      f.frameTime -= f.frameMs;
+      f.frame++;
+    }
+    const sheet = FX_SHEETS[f.sheet];
+    const row = sheet && sheet.rows[f.skill];
+    if (!sheet || !row || f.frame >= row.count) {
+      game.fxInstances.splice(i, 1);
+    }
+  }
+}
+
+function drawFxInstances() {
+  if (!game.fxInstances || !game.fxInstances.length) return;
+  const camX = game.camera.x;
+  for (const f of game.fxInstances) {
+    const sheet = FX_SHEETS[f.sheet];
+    if (!sheet) continue;
+    const row = sheet.rows[f.skill];
+    if (!row) continue;
+    let wx = f.x, wy = f.y;
+    if (f.follow) {
+      wx = f.follow.x + (f.follow.w || 0)/2 + f.followOffX;
+      wy = f.follow.y + (f.follow.h || 0)/2 + f.followOffY;
+    }
+    const sx = wx - camX;
+    const sy = wy;
+    const fw = row.frameW * f.scale;
+    const fh = row.frameH * f.scale;
+    ctx.save();
+    if (f.facing < 0) {
+      ctx.translate(sx, sy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(sheet.canvas, f.frame * row.frameW, row.y, row.frameW, row.frameH,
+                    -fw/2, -fh/2, fw, fh);
+    } else {
+      ctx.drawImage(sheet.canvas, f.frame * row.frameW, row.y, row.frameW, row.frameH,
+                    sx - fw/2, sy - fh/2, fw, fh);
+    }
+    ctx.restore();
+  }
+}
+
 function getArcherAim() {
   if (player.cls !== 'archer') return { cosA: 1, sinA: 0 };
   if (game.keys['arrowup'])   return { cosA: Math.cos(-0.5), sinA: Math.sin(-0.5) };
@@ -3632,6 +3800,7 @@ const SKILL_FNS = {
   powerStrike: () => {
     // 2-hit combo — quick opener then heavy follow-up
     addShake(3); flash(0.12);
+    spawnFx('warrior','powerSlash', player.x + player.w/2 + player.facing * 60, player.y + 28, player.facing, { scale: 0.45 });
     // Hit 1 — quick forward jab
     performMelee(140, 1.3, { color:'#ffcc88', kb:3, stun:120, burst:10 });
     for (let i = 0; i < 8; i++) {
@@ -3665,6 +3834,10 @@ const SKILL_FNS = {
     addShake(3); flash(0.12);
     player.vy = -13;                  // strong leap up
     player.invulnerable = Math.max(player.invulnerable, 1100);
+    // Play Earthbreaker sprite at impact (~1000ms after cast — matches slam timer)
+    setTimeout(() => spawnFx('warrior','earthbreaker',
+      player.x + player.w/2 + player.facing * 80, 478, player.facing,
+      { scale: 0.55, frameMs: 70 }), 1000);
     // Launch burst — ground debris ring
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * Math.PI * 2;
@@ -3816,6 +3989,7 @@ const SKILL_FNS = {
     player.buffs.warCry = 7000;
     showToast('WAR CRY! +55% ATK · +25% DEF', 'epic');
     flash(0.35); addShake(7);
+    spawnFx('warrior','auraBurst', player.x + player.w/2, player.y + player.h/2, player.facing, { scale: 0.7, frameMs: 60 });
     const cx = player.x + player.w/2, cy = player.y + player.h/2;
     // Damaging pulse + aggro taunt
     for (const m of game.monsters) {
@@ -3864,6 +4038,9 @@ const SKILL_FNS = {
     player.buffs.rampage = 3500;
     showToast('RAMPAGE!', 'legendary');
     flash(0.6); addShake(14);
+    // Sword-Storm sprite follows the player for the duration
+    spawnFx('warrior','swordStorm', 0, 0, player.facing,
+      { scale: 1.0, frameMs: 70, follow: player, followOffY: -8 });
     const rounds = 8;
     for (let i = 0; i < rounds; i++) {
       setTimeout(() => {
@@ -3888,6 +4065,7 @@ const SKILL_FNS = {
     player._guardianReflect = game.time + 6000;   // read in damage pipeline for thorns
     showToast('GUARDIAN — 80% DR · 50% reflect', 'epic');
     addShake(5); flash(0.3);
+    spawnFx('warrior','shieldBash', player.x + player.w/2, player.y + player.h/2, player.facing, { scale: 0.75, frameMs: 70 });
     // Shield aura rings (2 concentric)
     for (let ring = 0; ring < 2; ring++) {
       for (let i = 0; i < 20; i++) {
@@ -3989,6 +4167,7 @@ const SKILL_FNS = {
     const baseShots = 3;
     const shots = baseShots + (player.mods.multishot || 0) + getEquipBonus('multishot');
     const speed = 11;
+    spawnFx('thief','throwingStar', player.x + player.w/2 + player.facing * 40, player.y + 24, player.facing, { scale: 0.4, frameMs: 40 });
     for (let i = 0; i < shots; i++) {
       const spread = (i - (shots - 1) / 2) * 0.28;
       // 45° downward base; spread rotates around that angle
@@ -4022,6 +4201,7 @@ const SKILL_FNS = {
     // Blink with damaging trail + lingering smoke + brief freeze on arrival
     const tx = Math.min(game.mapData.worldWidth - player.w, Math.max(0, player.x + player.facing * 220));
     const startX = player.x;
+    spawnFx('thief','shadowMove', startX + (tx - startX)/2 + player.w/2, player.y + player.h/2, player.facing, { scale: 0.65, frameMs: 45 });
     // Damage enemies along path
     for (const m of game.monsters) {
       if (m.currentHp <= 0) continue;
@@ -4308,6 +4488,7 @@ const SKILL_FNS = {
     player.hp = Math.min(getMaxHp(), player.hp + Math.floor(getMaxHp() * 0.3));
     // Drop a damaging smoke cloud at position
     const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    spawnFx('thief','smokeScreen', cx, cy, player.facing, { scale: 0.9, frameMs: 80 });
     for (let tick = 0; tick < 4; tick++) {
       setTimeout(() => {
         for (const m of game.monsters) {
@@ -4337,6 +4518,7 @@ const SKILL_FNS = {
   },
   sleight: () => {
     // Chain-teleport through every enemy in range, stealing from each
+    spawnFx('thief','mesoExplosion', player.x + player.w/2, player.y + player.h/2, player.facing, { scale: 0.8, frameMs: 60 });
     const targets = [];
     for (const m of game.monsters) {
       if (m.currentHp <= 0) continue;
@@ -4396,16 +4578,20 @@ const SKILL_FNS = {
   magicBolt: () => performBolt(),
   fireball: () => {
     // Mild gravity, flies horizontal ~250px then detonates in a 90-radius AoE
-    game.projectiles.push({
+    const fp = {
       x: player.x + (player.facing > 0 ? player.w : -24), y: player.y + 18,
       vx: player.facing * 10, vy: 0, w: 28, h: 22, life: 25,   // ~250px travel
       damage: getAtk() * 2.5 + 15, owner: 'player', skill: 'fire', explode: 90,
       selfExplode: true, gravity: 0.10,                         // mild gravity
       color: '#ff8822', _enh: player._enh,
-    });
+    };
+    game.projectiles.push(fp);
+    // Fireball sprite tracks the projectile through the air
+    spawnFx('mage','fireball', 0, 0, player.facing, { scale: 0.45, frameMs: 45, follow: fp, followOffY: 8 });
   },
   iceSpike: () => {
     // 3-spike wide AoE + each piercing; spikes spread vertically and on hit splash-freeze nearby
+    spawnFx('mage','iceSpike', player.x + player.w/2 + player.facing * 80, player.y + 40, player.facing, { scale: 0.5, frameMs: 55 });
     const baseX = player.x + (player.facing > 0 ? player.w : -20);
     const baseY = player.y + 18;
     for (let i = -1; i <= 1; i++) {
@@ -4427,7 +4613,7 @@ const SKILL_FNS = {
     for (let i=0;i<20;i++) { game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:25,color:'#aa88ff',size:3}); }
     player.invulnerable = Math.max(player.invulnerable, 180);
   },
-  arcaneBurst: () => { addShake(5); performAround(120, 2.0, { color:'#cc99ff', kb:5 });
+  arcaneBurst: () => { addShake(5); spawnFx('mage','arcaneBurst', player.x + player.w/2, player.y + player.h/2, player.facing, { scale: 0.7, frameMs: 55 }); performAround(120, 2.0, { color:'#cc99ff', kb:5 });
     for (let i=0;i<40;i++){ const a=(i/40)*Math.PI*2; game.particles.push({x:player.x+player.w/2,y:player.y+player.h/2,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:35,color:'#d8b4ff',size:3}); } },
   // Archmage
   meteor: () => performMeteor(),
@@ -4493,6 +4679,7 @@ const SKILL_FNS = {
     const count = 3 + bonus + treeBonus;
     const { cosA, sinA } = getArcherAim();
     const speed = 10;
+    spawnFx('archer','multiShot', player.x + player.w/2 + player.facing * 40, player.y + 20, player.facing, { scale: 0.45, frameMs: 50 });
     for (let i = 0; i < count; i++) {
       const off = (i - (count - 1) / 2);
       game.projectiles.push({
@@ -4508,13 +4695,16 @@ const SKILL_FNS = {
   chargedShot: () => {
     const { cosA, sinA } = getArcherAim();
     const speed = 13;
-    game.projectiles.push({
+    const p = {
       x: player.x + (player.facing > 0 ? player.w : -30), y: player.y + 18,
       vx: player.facing * speed * cosA, vy: sinA * speed,
       w: 32, h: 10, life: 90,
       damage: getAtk() * 3.5 + 20, owner: 'player', skill: 'charged', pierce: true, color: '#ff9944',
       _enh: player._enh,
-    });
+    };
+    game.projectiles.push(p);
+    // Charged Shot sprite tracks the arrow
+    spawnFx('archer','chargedShot', 0, 0, player.facing, { scale: 0.4, frameMs: 50, follow: p });
     flash(0.15);
   },
   evadeRoll: () => {
@@ -4540,6 +4730,7 @@ const SKILL_FNS = {
   eagleEye: () => {
     player.buffs.eagleEye = 8000;
     showToast('Eagle Eye — +40% Crit', 'epic');
+    spawnFx('archer','phoenix', player.x + player.w/2, player.y + player.h/2, player.facing, { scale: 0.8, frameMs: 90 });
     // Visual burst for the buff
     for (let i = 0; i < 15; i++) {
       game.particles.push({
@@ -4591,6 +4782,7 @@ const SKILL_FNS = {
   },
   arrowRain: () => {
     const cx = player.x + player.w/2 + player.facing * 200;
+    spawnFx('archer','arrowRain', cx, 420, 1, { scale: 0.9, frameMs: 80 });
     for (let i = 0; i < 12; i++) {
       setTimeout(() => {
         if (player.hp <= 0) return;
@@ -11088,12 +11280,14 @@ function loop(time) {
     updateMonsters(dt);
     updateProjectiles(dt);
     updateParticles(dt);
+    updateFxInstances(dt);
     updatePowerupOrbs(dt);
     updateAmbient();
     updateCamera();
   } else if (player.hp > 0) {
     updateCamera();
     updateParticles(dt);
+    updateFxInstances(dt);
     updateAmbient();
   }
 
@@ -11124,6 +11318,7 @@ function loop(time) {
   drawPlayer();
   drawPet();
   drawParticles();
+  drawFxInstances();
   drawDamageNumbers();
 
   ctx.restore();
