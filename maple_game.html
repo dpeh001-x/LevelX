@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.5';
+const GAME_VERSION = 'v0.9.6';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1593,33 +1593,29 @@ const MAPS = {
   town: {
     name:'Everdawn Bazaar',
     sky:['#ffd4e2','#ffe8d0','#e8f5cf'],
-    worldWidth: 1500,
+    worldWidth: 1100,
     isTown: true,
     platforms: [
-      {x:0,y:480,w:1500,h:60,type:'ground'},
-      // Raised shop awnings / market stalls (walkable)
-      {x:160, y:360, w:140, h:12, type:'platform'},
-      {x:360, y:360, w:140, h:12, type:'platform'},
-      {x:560, y:360, w:140, h:12, type:'platform'},
-      {x:780, y:360, w:140, h:12, type:'platform'},
-      {x:980, y:360, w:140, h:12, type:'platform'},
-      {x:1180,y:360, w:140, h:12, type:'platform'},
-      // Upper balcony tier
-      {x:260, y:240, w:160, h:12, type:'platform'},
-      {x:620, y:210, w:240, h:12, type:'platform'},  // central plaza awning
-      {x:1040,y:240, w:160, h:12, type:'platform'},
+      {x:0, y:480, w:1100, h:60, type:'ground'},
+      // Sidewalk tier right outside each building
+      {x:120, y:360, w:80, h:10, type:'platform'},
+      {x:260, y:360, w:80, h:10, type:'platform'},
+      {x:400, y:360, w:80, h:10, type:'platform'},
+      {x:540, y:360, w:80, h:10, type:'platform'},
+      {x:680, y:360, w:80, h:10, type:'platform'},
+      {x:820, y:360, w:80, h:10, type:'platform'},
     ],
     npcs: [
-      {x:170,  name:'Elspeth',       role:'potion',  color:'#ff88bb'},
-      {x:370,  name:'Brok',          role:'weapon',  color:'#6b8fcc'},
-      {x:570,  name:'Master Ren',    role:'skills',  color:'#cc9944'},
-      {x:790,  name:'Sage Mira',     role:'sage',    color:'#aa66cc'},
-      {x:990,  name:'Old Arlen',     role:'info',    color:'#6aaa88'},
-      {x:1220, name:'Caravan Yara',  role:'caravan', color:'#e8b85a'},
+      {x:160,  name:'Elspeth',       role:'potion',  color:'#ff88bb'},
+      {x:300,  name:'Brok',          role:'weapon',  color:'#6b8fcc'},
+      {x:440,  name:'Master Ren',    role:'skills',  color:'#cc9944'},
+      {x:580,  name:'Sage Mira',     role:'sage',    color:'#aa66cc'},
+      {x:720,  name:'Old Arlen',     role:'info',    color:'#6aaa88'},
+      {x:860,  name:'Caravan Yara',  role:'caravan', color:'#e8b85a'},
     ],
     portals: [
-      {x:70,   dest:'sunsetBeach', name:'◀ Sunset Coast'},
-      {x:1430, dest:'forest',      name:'▶ Emerald Thicket'},
+      {x:60,   dest:'sunsetBeach', name:'◀ Sunset Coast'},
+      {x:1040, dest:'forest',      name:'▶ Emerald Thicket'},
     ],
     spawns: [],
   },
@@ -8203,117 +8199,37 @@ function drawBackground() {
     return;
   }
 
-  // Helper — smooth mountain silhouette using a quadratic curve between peaks
-  const drawMountainLayer = (col, colLight, step, baseY, amp, parallax, seed) => {
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(-10, H);
-    const pts = [];
-    for (let x = -step; x <= W + step * 2; x += step) {
-      const wx = x + game.camera.x * parallax + seed;
-      const h = amp + Math.sin(wx * 0.008) * amp * 0.6 + Math.cos(wx * 0.016) * amp * 0.3;
-      pts.push({ x, y: baseY - h });
-    }
-    ctx.lineTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const xc = (pts[i].x + pts[i+1].x) / 2;
-      const yc = (pts[i].y + pts[i+1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-    }
-    ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-    ctx.lineTo(W + 20, H);
-    ctx.lineTo(-10, H);
-    ctx.closePath();
-    ctx.fill();
-    // Light-side highlight — rim the tops of the silhouette with a lighter tone
-    ctx.strokeStyle = colLight;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const xc = (pts[i].x + pts[i+1].x) / 2;
-      const yc = (pts[i].y + pts[i+1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-    }
-    ctx.stroke();
-  };
+  // --- BLAND BACKGROUND — one simple mountain silhouette + flat clouds ---
+  ctx.fillStyle = '#8a9aa8';
+  ctx.beginPath();
+  ctx.moveTo(-10, H);
+  const pts = [];
+  for (let x = -60; x <= W + 120; x += 80) {
+    const wx = x + game.camera.x * 0.08;
+    const h = 55 + Math.sin(wx * 0.008) * 30;
+    pts.push({ x, y: 400 - h });
+  }
+  ctx.lineTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const xc = (pts[i].x + pts[i+1].x) / 2;
+    const yc = (pts[i].y + pts[i+1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+  }
+  ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+  ctx.lineTo(W + 20, H);
+  ctx.closePath();
+  ctx.fill();
 
-  // Three layered mountain silhouettes — deepest → nearest, with 2-tone rim light
-  drawMountainLayer('#7886a4', '#98aac6', 90, 360, 90, 0.06, 0);
-  drawMountainLayer('#8a9cb0', '#b0c0d2', 70, 380, 70, 0.12, 30);
-  drawMountainLayer('#9ab0b8', '#c8d8d8', 55, 404, 52, 0.22, 70);
-
-  // Soft atmospheric haze band at the mountain base — hides the seam with ground
-  const hazeGrad = ctx.createLinearGradient(0, 360, 0, 440);
-  hazeGrad.addColorStop(0, 'rgba(255,255,255,0)');
-  hazeGrad.addColorStop(0.5, 'rgba(235,240,250,0.35)');
-  hazeGrad.addColorStop(1, 'rgba(235,240,250,0)');
-  ctx.fillStyle = hazeGrad;
-  ctx.fillRect(0, 360, W, 80);
-
-  // Clouds — soft cotton with 2-tone highlight
+  // Minimal flat clouds
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
   for (const cl of clouds) {
     cl.x -= cl.speed;
     if (cl.x + cl.size < -game.camera.x * 0.15) cl.x = game.camera.x * 0.15 + W + 100;
     const sx = cl.x - game.camera.x * 0.15;
-    // Shadow base
-    ctx.fillStyle = 'rgba(200,210,225,0.55)';
-    ctx.beginPath();
-    ctx.arc(sx, cl.y + 2, cl.size * 0.5, 0, Math.PI * 2);
-    ctx.arc(sx + cl.size * 0.4, cl.y + 1, cl.size * 0.4, 0, Math.PI * 2);
-    ctx.arc(sx + cl.size * 0.8, cl.y + 2, cl.size * 0.45, 0, Math.PI * 2);
-    ctx.arc(sx + cl.size * 0.3, cl.y + cl.size * 0.15 + 2, cl.size * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    // Main body
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.beginPath();
     ctx.arc(sx, cl.y, cl.size * 0.5, 0, Math.PI * 2);
-    ctx.arc(sx + cl.size * 0.4, cl.y - cl.size * 0.1, cl.size * 0.4, 0, Math.PI * 2);
+    ctx.arc(sx + cl.size * 0.4, cl.y, cl.size * 0.4, 0, Math.PI * 2);
     ctx.arc(sx + cl.size * 0.8, cl.y, cl.size * 0.45, 0, Math.PI * 2);
-    ctx.arc(sx + cl.size * 0.3, cl.y + cl.size * 0.15, cl.size * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-    // Bright top rim — 2-tone
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath();
-    ctx.arc(sx + cl.size * 0.4, cl.y - cl.size * 0.2, cl.size * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Parallax trees — 2-tone leaves + trunk shade
-  for (const t of bgTrees) {
-    const sx = t.x - game.camera.x * t.layer;
-    if (sx < -100 || sx > W + 100) continue;
-    const trunkShd = t.layer < 0.5 ? '#3a2a1a' : '#2a1a0a';
-    const trunkMid = t.layer < 0.5 ? '#5a4a3a' : '#4a3a2a';
-    const trunkHi  = t.layer < 0.5 ? '#7a6a4a' : '#6a5a3a';
-    // Trunk with shade on right, mid on left
-    ctx.fillStyle = trunkShd;
-    ctx.fillRect(sx - 6, t.y, 12, t.size);
-    ctx.fillStyle = trunkMid;
-    ctx.fillRect(sx - 5, t.y, 8, t.size);
-    ctx.fillStyle = trunkHi;
-    ctx.fillRect(sx - 5, t.y, 2, t.size);
-    // Leaf shadow
-    const leafDk  = t.layer < 0.5 ? '#3a6a3a' : '#2a5a2a';
-    const leafMid = t.layer < 0.5 ? '#6aa866' : '#5a9856';
-    const leafHi  = t.layer < 0.5 ? '#8fcf7a' : '#7fbf6a';
-    ctx.fillStyle = leafDk;
-    ctx.beginPath();
-    ctx.arc(sx + 2, t.y + 3, t.size * 0.55, 0, Math.PI * 2);
-    ctx.arc(sx - t.size * 0.25, t.y + t.size * 0.15, t.size * 0.42, 0, Math.PI * 2);
-    ctx.arc(sx + t.size * 0.35, t.y + t.size * 0.15, t.size * 0.42, 0, Math.PI * 2);
-    ctx.fill();
-    // Main leaves
-    ctx.fillStyle = leafMid;
-    ctx.beginPath();
-    ctx.arc(sx, t.y, t.size * 0.5, 0, Math.PI * 2);
-    ctx.arc(sx - t.size * 0.3, t.y + t.size * 0.1, t.size * 0.4, 0, Math.PI * 2);
-    ctx.arc(sx + t.size * 0.3, t.y + t.size * 0.1, t.size * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    // Top highlight crescent
-    ctx.fillStyle = leafHi;
-    ctx.beginPath();
-    ctx.arc(sx - t.size * 0.15, t.y - t.size * 0.1, t.size * 0.3, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -8322,7 +8238,101 @@ function drawBackground() {
   if (game.mapData.isBossArena) drawBossDecor();
 }
 
+// --- Simple high-rise town skyline ---
 function drawTownDecor() {
+  // Flat plaza walkway under buildings
+  ctx.fillStyle = '#c6bfae';
+  ctx.fillRect(0, 470, 1100 - game.camera.x, 12);
+  ctx.fillStyle = '#a89e8a';
+  ctx.fillRect(0, 482, 1100 - game.camera.x, 4);
+
+  // 6 tall high-rise blocks — matches the 6 NPC shops
+  const blocks = [
+    { x: 110, w: 120, h: 260, wall: '#dfe4ea', shd: '#a9b0ba', accent: '#6b8fcc', sign: '🧪', name: 'POTIONS' },
+    { x: 250, w: 120, h: 310, wall: '#dcdbe3', shd: '#a0a0b0', accent: '#4a6688', sign: '⚔️', name: 'FORGE'   },
+    { x: 390, w: 120, h: 230, wall: '#e0d8c8', shd: '#b0a890', accent: '#cc8844', sign: '📘', name: 'SKILLS'  },
+    { x: 530, w: 120, h: 290, wall: '#dcd2e4', shd: '#a89cb0', accent: '#8844cc', sign: '✨', name: 'SAGE'    },
+    { x: 670, w: 120, h: 250, wall: '#d4dcc8', shd: '#9aa488', accent: '#66aa66', sign: '🏡', name: 'INN'     },
+    { x: 810, w: 120, h: 330, wall: '#e4d8be', shd: '#b0a280', accent: '#d88a44', sign: '🐪', name: 'CARAVAN' },
+  ];
+
+  for (const b of blocks) {
+    const sx = b.x - game.camera.x;
+    if (sx + b.w < 0 || sx > W) continue;
+    const top = 480 - b.h;
+
+    // Shadow side (right 25% of wall)
+    ctx.fillStyle = b.shd;
+    ctx.fillRect(sx, top, b.w, b.h);
+    // Main wall
+    ctx.fillStyle = b.wall;
+    ctx.fillRect(sx, top, b.w - 10, b.h);
+
+    // Window grid — small square windows in rows
+    const cols = 4;
+    const rows = Math.floor((b.h - 40) / 30);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const wx = sx + 12 + c * 22;
+        const wy = top + 20 + r * 30;
+        // Frame (shadow)
+        ctx.fillStyle = b.shd;
+        ctx.fillRect(wx, wy, 16, 14);
+        // Lit window (vary a few randomly per building for warmth)
+        const lit = ((b.x + r * 7 + c * 3) % 4) < 2;
+        ctx.fillStyle = lit ? '#ffeecc' : '#5a6678';
+        ctx.fillRect(wx + 1, wy + 1, 14, 12);
+        // Single vertical divider
+        ctx.fillStyle = b.shd;
+        ctx.fillRect(wx + 7, wy + 1, 1, 12);
+      }
+    }
+
+    // Entrance door at ground level
+    const dx = sx + b.w / 2 - 9;
+    ctx.fillStyle = '#2a1a14';
+    ctx.fillRect(dx - 1, 480 - 30, 20, 30);
+    ctx.fillStyle = b.accent;
+    ctx.fillRect(dx, 480 - 28, 18, 28);
+    // Door handle
+    ctx.fillStyle = '#f0e0a0';
+    ctx.fillRect(dx + 14, 480 - 18, 2, 2);
+
+    // Flat rooftop — modern parapet
+    ctx.fillStyle = b.shd;
+    ctx.fillRect(sx - 2, top - 4, b.w + 4, 4);
+    ctx.fillStyle = b.wall;
+    ctx.fillRect(sx, top - 4, b.w - 10, 2);
+
+    // Roof antenna / AC unit for a bit of high-rise silhouette
+    if (b.h > 260) {
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(sx + b.w / 2 - 1, top - 22, 2, 18);
+      ctx.fillStyle = '#ff3344';
+      ctx.fillRect(sx + b.w / 2 - 2, top - 22, 4, 2);
+    } else {
+      // AC box
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(sx + 18, top - 10, 16, 6);
+      ctx.fillStyle = '#5a5a5a';
+      ctx.fillRect(sx + 18, top - 10, 16, 1);
+    }
+
+    // Shop sign plaque near the door
+    ctx.fillStyle = b.accent;
+    ctx.fillRect(dx - 12, 480 - 50, 44, 14);
+    ctx.fillStyle = '#1a1014';
+    ctx.fillRect(dx - 12, 480 - 50, 44, 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(dx - 12, 480 - 37, 44, 1);
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(b.sign, dx + 10, 480 - 39);
+  }
+  return;
+  // -- legacy medieval decor below, unreachable --
+  if (false) {
   const buildings = [
     { x:120, w:120, h:130, roof:'#cc4466', roofDark:'#8a2848', wall:'#e8c89a', wallDark:'#c89868', sign:'🧪', name:'POTIONS' },
     { x:320, w:120, h:130, roof:'#4488cc', roofDark:'#285688', wall:'#d0d0e8', wallDark:'#a0a0c0', sign:'⚔️', name:'FORGE' },
@@ -8758,6 +8768,7 @@ function drawTownDecor() {
     ctx.fillRect(sxp - 3, wy - flap, 3, 1);
     ctx.fillRect(sxp + 2, wy - flap, 3, 1);
   }
+  } // end legacy unreachable block
 }
 
 // Cached star positions (built once per layer)
@@ -10086,36 +10097,53 @@ function drawCuteCharacter(sx, sy) {
   px(sx + 8, sy + 47 + bb + wc, 7, 1, CUTE_PAL.outline);
   px(sx + 17, sy + 47 + bb - wc, 7, 1, CUTE_PAL.outline);
 
-  // === TORSO (humanoid — slim build, tapered waist) ===
-  // Wrap torso drawing in a rotation that pivots at the hips for the swing.
+  // === TORSO (rounded humanoid — tapered waist, curved sides) ===
   const hipY = sy + 36 + bb;
   ctx.save();
   ctx.translate(cx, hipY);
   ctx.rotate(swingAng);
   ctx.translate(-cx, -hipY);
 
-  // Shoulders (narrower than before — 20 px wide)
   const topY = sy + 24 + bb;
-  px(sx + 6, topY, 20, 1, CUTE_PAL.outline);
-  px(sx + 7, topY + 1, 18, 2, cc.body2);
-  // Chest (18 wide)
-  px(sx + 7, topY + 3, 18, 5, cc.body);
-  px(sx + 7, topY + 3, 2, 5, cc.bodyShd);
-  // Mid torso (16 wide)
-  px(sx + 8, topY + 8, 16, 4, cc.body);
-  px(sx + 8, topY + 8, 2, 4, cc.bodyShd);
-  // Waist (narrowest — 14 wide)
-  px(sx + 9, topY + 12, 14, 2, cc.body);
-  px(sx + 9, topY + 12, 2, 2, cc.bodyShd);
-  // Torso outline (stepped)
-  px(sx + 6, topY, 1, 3, CUTE_PAL.outline);
-  px(sx + 25, topY, 1, 3, CUTE_PAL.outline);
-  px(sx + 7, topY + 3, 1, 5, CUTE_PAL.outline);
-  px(sx + 24, topY + 3, 1, 5, CUTE_PAL.outline);
-  px(sx + 8, topY + 8, 1, 4, CUTE_PAL.outline);
-  px(sx + 23, topY + 8, 1, 4, CUTE_PAL.outline);
-  px(sx + 9, topY + 12, 1, 2, CUTE_PAL.outline);
-  px(sx + 22, topY + 12, 1, 2, CUTE_PAL.outline);
+  // Draw the torso silhouette as a smooth path (rounded shoulders, curve to waist)
+  const lCx = sx + 7, rCx = sx + 25;           // shoulder outline anchors
+  const waistL = sx + 10, waistR = sx + 22;    // waist anchors
+  // Outline path (filled dark) — slightly bigger than body fill
+  ctx.fillStyle = CUTE_PAL.outline;
+  ctx.beginPath();
+  ctx.moveTo(lCx - 1, topY + 0);
+  ctx.quadraticCurveTo(sx + 4, topY + 4, lCx - 1, topY + 8);
+  ctx.quadraticCurveTo(waistL - 1, topY + 10, waistL - 1, topY + 15);
+  ctx.lineTo(waistR + 1, topY + 15);
+  ctx.quadraticCurveTo(waistR + 1, topY + 10, rCx + 1, topY + 8);
+  ctx.quadraticCurveTo(sx + 28, topY + 4, rCx + 1, topY + 0);
+  ctx.closePath();
+  ctx.fill();
+  // Main body fill (inset by 1 for outline effect)
+  ctx.fillStyle = cc.body;
+  ctx.beginPath();
+  ctx.moveTo(lCx, topY + 1);
+  ctx.quadraticCurveTo(sx + 5, topY + 4, lCx, topY + 8);
+  ctx.quadraticCurveTo(waistL, topY + 10, waistL, topY + 14);
+  ctx.lineTo(waistR, topY + 14);
+  ctx.quadraticCurveTo(waistR, topY + 10, rCx, topY + 8);
+  ctx.quadraticCurveTo(sx + 27, topY + 4, rCx, topY + 1);
+  ctx.closePath();
+  ctx.fill();
+  // 2-tone left-side shadow (curved ribbon along shadow side)
+  ctx.fillStyle = cc.bodyShd;
+  ctx.beginPath();
+  ctx.moveTo(lCx, topY + 1);
+  ctx.quadraticCurveTo(sx + 5, topY + 4, lCx, topY + 8);
+  ctx.quadraticCurveTo(waistL, topY + 10, waistL, topY + 14);
+  ctx.lineTo(waistL + 2, topY + 14);
+  ctx.quadraticCurveTo(waistL + 2, topY + 10, lCx + 2, topY + 8);
+  ctx.quadraticCurveTo(sx + 7, topY + 4, lCx + 2, topY + 1);
+  ctx.closePath();
+  ctx.fill();
+  // Top highlight ribbon (lit side)
+  ctx.fillStyle = cc.body2;
+  ctx.fillRect(sx + 9, topY + 2, 14, 1);
 
   // White front trim (collar V)
   px(sx + 12, topY + 3, 8, 1, CUTE_PAL.trim);
@@ -10173,11 +10201,27 @@ function drawCuteCharacter(sx, sy) {
   ctx.rotate(headTilt);
   ctx.translate(-cx, -(sy + 12 + hb));
 
-  // Head outline + skin (BIGGER — 30x26, extends beyond player.w for chibi look)
-  px(sx + 1, sy + 0 + hb, 30, 24, CUTE_PAL.outline);
-  px(sx + 2, sy + 1 + hb, 28, 22, CUTE_PAL.skin);
-  // Chin shadow
-  px(sx + 3, sy + 20 + hb, 26, 2, CUTE_PAL.skinShd);
+  // Head — round chibi circle with 2-tone shading
+  const hcx = sx + 16, hcy = sy + 12 + hb;
+  const hr = 14;                         // head radius
+  // Outline ring
+  ctx.fillStyle = CUTE_PAL.outline;
+  ctx.beginPath(); ctx.arc(hcx, hcy, hr + 1, 0, Math.PI * 2); ctx.fill();
+  // Skin base
+  ctx.fillStyle = CUTE_PAL.skin;
+  ctx.beginPath(); ctx.arc(hcx, hcy, hr, 0, Math.PI * 2); ctx.fill();
+  // Shadow crescent on the right side (2-tone)
+  ctx.fillStyle = CUTE_PAL.skinShd;
+  ctx.beginPath();
+  ctx.arc(hcx, hcy, hr, -Math.PI * 0.15, Math.PI * 0.7);
+  ctx.arc(hcx - 3, hcy, hr, Math.PI * 0.7, -Math.PI * 0.15, true);
+  ctx.closePath();
+  ctx.fill();
+  // Chin soft shadow under
+  ctx.fillStyle = CUTE_PAL.skinShd;
+  ctx.beginPath();
+  ctx.ellipse(hcx, hcy + hr - 2, hr - 3, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   // Hair (fills bigger head nicely)
   px(sx + 2, sy - 1 + hb, 28, 9, cc.hair);
