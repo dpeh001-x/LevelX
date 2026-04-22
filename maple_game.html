@@ -123,6 +123,134 @@
   #controls kbd { background: #444; padding: 1px 4px; border-radius: 3px;
     border: 1px solid #666; font-family: monospace; font-size: 10px; }
 
+  /* ============================================================
+     MULTIPLAYER / CO-OP HUD (v0.11.0 prototype)
+     ============================================================ */
+  #party-panel {
+    position: absolute; top: 118px; left: 10px;
+    width: 198px;
+    background: linear-gradient(145deg, rgba(18,10,42,0.88), rgba(28,18,58,0.88));
+    border: 1px solid #8a6ccf; border-radius: 8px;
+    padding: 7px 9px 8px 9px;
+    font-size: 11px; color: #e8d8ff;
+    text-shadow: 1px 1px 2px #000;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55), inset 0 0 12px rgba(140,110,220,0.12);
+    z-index: 8;
+    user-select: none;
+  }
+  #party-panel .pp-title {
+    font-size: 10px; letter-spacing: 1px; font-weight: bold;
+    color: #ffd88a; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  #party-panel .pp-title .pp-live {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 9px; color: #a0f5b0; letter-spacing: 0.3px;
+  }
+  #party-panel .pp-live .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #66ff88;
+    box-shadow: 0 0 6px #66ff88; animation: pp-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pp-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.55; transform:scale(0.75); } }
+  #party-panel .pp-member {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 6px;
+    padding: 4px 4px 5px 4px;
+    margin: 2px 0;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.22);
+    border-left: 3px solid #888;
+    position: relative;
+  }
+  #party-panel .pp-member.me { border-left-color: #ffdd55; background: rgba(60,40,0,0.3); }
+  #party-panel .pp-member.down { opacity: 0.55; filter: grayscale(0.8); }
+  #party-panel .pp-member.speaking { box-shadow: 0 0 0 1px #aaffcc, 0 0 8px rgba(140,255,180,0.4); }
+  #party-panel .pp-avatar {
+    width: 22px; height: 22px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(0,0,0,0.25));
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  #party-panel .pp-info .pp-name-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 11px; line-height: 1.05;
+  }
+  #party-panel .pp-info .pp-name { font-weight: bold; color: #ffffff; }
+  #party-panel .pp-info .pp-lvl { color: #ffd88a; font-size: 9px; font-weight: bold; }
+  #party-panel .pp-info .pp-cls { font-size: 9px; color: #c8b4ff; letter-spacing: 0.3px; }
+  #party-panel .pp-bar {
+    height: 5px; border-radius: 3px; background: rgba(0,0,0,0.55);
+    margin-top: 2px; position: relative; overflow: hidden;
+  }
+  #party-panel .pp-bar .pp-fill {
+    height: 100%; transition: width 0.2s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  #party-panel .pp-hp   { background: linear-gradient(90deg, #ff5566, #ff8a66); }
+  #party-panel .pp-mp   { background: linear-gradient(90deg, #4a8aff, #88bbff); }
+  #party-panel .pp-ping {
+    position: absolute; top: -6px; right: -6px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #ffdd55; color: #2a1a00;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold;
+    box-shadow: 0 0 10px #ffcc44;
+    animation: pp-ping 0.9s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes pp-ping {
+    0% { transform: scale(0.3); opacity: 0; }
+    30% { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.95; }
+  }
+
+  #chat-panel {
+    position: absolute; left: 10px; bottom: 120px;
+    width: 322px;
+    background: linear-gradient(180deg, rgba(10,6,22,0.35), rgba(10,6,22,0.78));
+    border: 1px solid rgba(140,110,220,0.35); border-radius: 7px;
+    padding: 6px 8px 4px 8px;
+    font-size: 11px; color: #e8e2ff;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 8;
+    backdrop-filter: blur(2px);
+    pointer-events: auto;
+  }
+  #chat-panel .chat-log {
+    height: 94px; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    gap: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  #chat-panel .chat-line { line-height: 1.25; opacity: 0.95; }
+  #chat-panel .chat-line.fade-in { animation: chat-fade 0.35s ease; }
+  @keyframes chat-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 0.95; transform: translateY(0); } }
+  #chat-panel .chat-name { font-weight: bold; margin-right: 4px; }
+  #chat-panel .chat-sys  { color: #ffd88a; font-style: italic; }
+  #chat-panel .chat-loot { color: #88ffaa; }
+  #chat-panel .chat-emote { color: #ffcc88; font-style: italic; }
+  #chat-panel .chat-input-row {
+    display: none; margin-top: 4px;
+    border-top: 1px solid rgba(140,110,220,0.3);
+    padding-top: 4px;
+  }
+  #chat-panel.typing .chat-input-row { display: flex; }
+  #chat-panel .chat-prompt { color: #ffdd55; font-weight: bold; margin-right: 4px; }
+  #chat-panel .chat-input {
+    flex: 1; background: rgba(0,0,0,0.3);
+    border: 1px solid #8866cc; border-radius: 3px;
+    color: white; padding: 2px 5px; font-size: 11px;
+    outline: none;
+  }
+  #chat-hint {
+    position: absolute; left: 10px; bottom: 100px;
+    font-size: 9px; color: #888;
+    background: rgba(0,0,0,0.35); padding: 2px 6px; border-radius: 3px;
+    pointer-events: none;
+  }
+
   #skill-bar {
     position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
     display: flex; gap: 6px;
@@ -652,8 +780,26 @@
   <div id="controls">
     Press <kbd>?</kbd> for Controls &nbsp;·&nbsp;
     <kbd>F</kbd> Talk &nbsp;·&nbsp; <kbd>B</kbd> Bag &nbsp;·&nbsp; <kbd>R</kbd>/<kbd>T</kbd> Pots &nbsp;·&nbsp;
-    <kbd>N</kbd> Codex &nbsp;·&nbsp; <kbd>M</kbd> Mute
+    <kbd>N</kbd> Codex &nbsp;·&nbsp; <kbd>M</kbd> Mute &nbsp;·&nbsp;
+    <kbd>Enter</kbd> Chat &nbsp;·&nbsp; <kbd>G</kbd> Ping &nbsp;·&nbsp; <kbd>Y</kbd> Emote
   </div>
+
+  <div id="party-panel">
+    <div class="pp-title">
+      <span>⚔ Party &nbsp;<span id="pp-count" style="color:#c8b4ff;">1/4</span></span>
+      <span class="pp-live"><span class="dot"></span>LIVE</span>
+    </div>
+    <div id="pp-list"></div>
+  </div>
+
+  <div id="chat-panel">
+    <div class="chat-log" id="chat-log"></div>
+    <div class="chat-input-row">
+      <span class="chat-prompt">You ▸</span>
+      <input id="chat-input" class="chat-input" maxlength="120" autocomplete="off" />
+    </div>
+  </div>
+  <div id="chat-hint">press <kbd style="background:#444;padding:0 3px;border-radius:2px;border:1px solid #666;">Enter</kbd> to chat</div>
 
   <div id="skill-bar"></div>
 
@@ -918,7 +1064,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.10.3';
+const GAME_VERSION = 'v0.11.0';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -2159,6 +2305,122 @@ const player = {
 player.consumables = { hp_s: 5, mp_s: 3 };
 
 // =========================================================================
+// MULTIPLAYER / CO-OP PROTOTYPE (visual-only simulation — no real network)
+// =========================================================================
+// Three AI "teammates" wander/fight alongside the player so the game LOOKS
+// and FEELS like an online co-op session: party panel, floating name tags,
+// ambient chat, pings, emotes, shared-loot popups.
+const COOP = {
+  MAX_PARTY: 4,
+  FOLLOW_MIN: 60, FOLLOW_MAX: 180,
+  ATTACK_RANGE: 46,
+  CAST_RANGE: 260,
+  SPEED: 2.6,
+  GRAVITY: 0.5,
+};
+const COOP_NAMES = [
+  'Axeon','Kiyomi','Brightleaf','Nyxie','Tobias','Ravenna',
+  'Pixxel','Sylvara','KurtZ','Moonpea','Drogar','Velora',
+  'Shen','Mitsu','Fenris','Lilyfire','Trek','Zephyr',
+];
+const COOP_CLASSES = [
+  { cls:'warrior', icon:'⚔️', label:'Warrior' },
+  { cls:'rogue',   icon:'🗡️', label:'Rogue'   },
+  { cls:'mage',    icon:'🔮', label:'Mage'    },
+  { cls:'archer',  icon:'🏹', label:'Archer'  },
+];
+const COOP_PHRASES = {
+  pull:   ['incoming!','pulling!','watch the cleave','on it','brb kiting','ez pz','tag that one'],
+  kill:   ['nice','gg','clean','💥','rip','bonked','one-shot lol','look at that crit'],
+  loot:   ['ooh shiny','mine mine mine jk','need or greed?','drops 🫡','split the lumens'],
+  idle:   ['anyone got pots?','this map slaps','lvl up grind ✨','I love this build','afk brb water','wanna do boss next?','who tanks?'],
+  praise: ['hero','carry','MVP','goated','💪','let him cook'],
+  death:  ['oof','unlucky','res pls','that was brutal','worth it'],
+  ping:   ['check here!','come look','heads up','this way','portal here'],
+};
+const COOP_EMOTES = ['👋','🎉','🫡','🔥','💪','👍','❤️','😤','🤝','✨','🪄','🏹'];
+
+const coop = {
+  enabled: true,
+  teammates: [],
+  chat: [],          // rolling message log (last 40)
+  chatMax: 40,
+  chatting: false,   // is the chat input focused?
+  lastChatterT: 0,
+  partyPings: [],    // pings to flash on the minimap
+  partyDirty: true,  // party-panel DOM needs refresh
+  chatDirty: true,   // chat log DOM needs refresh
+  lootCycle: 0,      // round-robin who gets the "shared loot" popup
+};
+
+// Build a pseudo-player for each teammate — enough state that the chibi
+// renderer in drawTeammate() can draw them like the main character.
+function makeTeammate(i, totalMembers) {
+  const def = COOP_CLASSES[i % COOP_CLASSES.length];
+  const name = COOP_NAMES[(Math.floor(Math.random() * COOP_NAMES.length) + i * 7) % COOP_NAMES.length];
+  const lv   = Math.max(1, (player.level || 1) + (Math.floor(Math.random() * 5) - 2));
+  const maxHp = 80 + lv * 14;
+  const maxMp = 40 + lv * 7;
+  return {
+    id: 'tm_' + i + '_' + Math.random().toString(36).slice(2, 6),
+    name, cls: def.cls, icon: def.icon, label: def.label,
+    level: lv,
+    hp: maxHp, maxHp, mp: maxMp, maxMp,
+    // Physics / pose (mirrors player shape)
+    x: player.x + (i + 1) * 42 * (i % 2 === 0 ? -1 : 1),
+    y: player.y,
+    vx: 0, vy: 0, w: SPRITE_W, h: SPRITE_H, facing: 1,
+    onGround: false, dropThrough: false,
+    state: 'idle',   // idle | walk | attack | cast | emote | down
+    attacking: false, attackTimer: 0, attackCooldown: 200 + Math.random() * 300,
+    castGlow: 0,
+    // Behaviour
+    target: null,
+    aiTimer: 400 + Math.random() * 400,
+    followOffset: (i - (totalMembers - 1) / 2) * 52,
+    // UI
+    speakBubble: null,   // { text, life, color }
+    emoteBubble: null,   // { icon, life }
+    nameFlashT: 0,
+    pingT: 0,
+    // Visuals (jitter colour per teammate so they read as distinct)
+    hairShift: Math.floor(Math.random() * 3),
+  };
+}
+
+// Spawn / refresh the party when a map loads.
+function initCoop() {
+  coop.teammates = [];
+  const n = 3; // Always a 4-player party (player + 3 AI).
+  for (let i = 0; i < n; i++) {
+    const t = makeTeammate(i, n);
+    coop.teammates.push(t);
+  }
+  coop.partyDirty = true;
+  coop.chatDirty = true;
+  // Announce the party when the game first boots.
+  if (!coop._introDone) {
+    coop._introDone = true;
+    chatPush('SYSTEM', 'Co-op session started. 3 party members joined.', 'sys');
+    for (const t of coop.teammates) {
+      chatPush('SYSTEM', `🟢 ${t.name} the ${t.label} (Lv.${t.level}) joined your party.`, 'sys');
+    }
+    setTimeout(() => chatPush(coop.teammates[0].name, pickPhrase('idle'), 'chat', coop.teammates[0].cls), 900);
+  } else {
+    // On subsequent maps, just show a tiny "re-synced" line.
+    chatPush('SYSTEM', `Party re-synced on ${game.mapData && game.mapData.name || 'new map'}.`, 'sys');
+  }
+}
+
+function pickPhrase(kind) {
+  const pool = COOP_PHRASES[kind] || COOP_PHRASES.idle;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function teammateClassColor(t) {
+  return (CUTE_CLASS_COLORS[t.cls] || CUTE_CLASS_COLORS.warrior);
+}
+
+// =========================================================================
 // DERIVED STATS
 // =========================================================================
 function getEquipBonus(key) {
@@ -2277,6 +2539,31 @@ function getJump() { return (player.baseJump || 10.5) + player.mods.jump; }
 window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   const repeat = e.repeat;
+
+  // --- Multiplayer chat intercept (runs before normal game keys) ----------
+  if (typeof coop !== 'undefined' && coop.chatting) {
+    // While typing, let the <input> handler deal with Enter/Escape and swallow
+    // everything else so WASD/arrows don't move the player.
+    if (k === 'escape') { e.preventDefault(); closeChatInput(); return; }
+    if (k === 'enter')  { e.preventDefault(); submitChatInput(); return; }
+    return;
+  }
+  if (typeof coop !== 'undefined' && !repeat && k === 'enter') {
+    e.preventDefault();
+    openChatInput();
+    return;
+  }
+  if (typeof coop !== 'undefined' && !repeat && k === 'g' && player.hp > 0 && !game.paused) {
+    e.preventDefault();
+    partyPing();
+    return;
+  }
+  if (typeof coop !== 'undefined' && !repeat && k === 'y' && player.hp > 0 && !game.paused) {
+    e.preventDefault();
+    playerEmote();
+    return;
+  }
+
   game.keys[k] = true;
   if (['arrowleft','arrowright','arrowup','arrowdown',' '].includes(k)) e.preventDefault();
 
@@ -3225,6 +3512,8 @@ function loadMap(id, entryX) {
 
   document.getElementById('map-label').textContent = game.mapData.name;
   showToast(`Entered ${game.mapData.name}`);
+  // Multiplayer: (re)spawn the party on this map so they stay near you.
+  if (typeof initCoop === 'function') initCoop();
 }
 
 // =========================================================================
@@ -3551,6 +3840,215 @@ function checkPlatformCollision(entity) {
     }
     if (prevVy > 10) addShake(2);
   }
+}
+
+// =========================================================================
+// CO-OP TEAMMATE UPDATE (AI behaviour — fake multiplayer presence)
+// =========================================================================
+function updateTeammates(dt) {
+  if (!coop.enabled || !game.mapData) return;
+  const W2 = game.mapData.worldWidth || 2000;
+
+  // React when the player scores a kill (teammates cheer occasionally).
+  if (coop._lastKills == null) coop._lastKills = game.kills || 0;
+  if ((game.kills || 0) > coop._lastKills) {
+    const gained = (game.kills || 0) - coop._lastKills;
+    coop._lastKills = game.kills || 0;
+    if (coop.teammates.length && Math.random() < 0.45) {
+      const t = coop.teammates[Math.floor(Math.random() * coop.teammates.length)];
+      if (t.hp > 0) {
+        const line = pickPhrase('praise');
+        chatPush(t.name, line, 'chat', t.cls);
+        popSpeechBubble(t, line);
+        if (Math.random() < 0.6) popEmote(t, COOP_EMOTES[Math.floor(Math.random() * COOP_EMOTES.length)]);
+      }
+    }
+    if (gained >= 3 && Math.random() < 0.7) {
+      chatPush('LOOT', `Party streak! ${gained} kills — +${gained * 12} Lumens split`, 'loot');
+    }
+  }
+
+  // Ambient chatter — random lines, once every 6–12s, only if chat isn't busy.
+  coop.lastChatterT -= dt;
+  if (coop.lastChatterT <= 0 && coop.teammates.length > 0) {
+    coop.lastChatterT = 6000 + Math.random() * 7000;
+    if (Math.random() < 0.8) {
+      const t = coop.teammates[Math.floor(Math.random() * coop.teammates.length)];
+      if (t.hp > 0) {
+        const line = pickPhrase('idle');
+        chatPush(t.name, line, 'chat', t.cls);
+        popSpeechBubble(t, line);
+      }
+    }
+  }
+
+  for (const t of coop.teammates) {
+    // Decay UI timers
+    if (t.speakBubble) { t.speakBubble.life -= dt; if (t.speakBubble.life <= 0) t.speakBubble = null; }
+    if (t.emoteBubble) { t.emoteBubble.life -= dt; if (t.emoteBubble.life <= 0) t.emoteBubble = null; }
+    if (t.nameFlashT > 0) t.nameFlashT = Math.max(0, t.nameFlashT - dt);
+    if (t.pingT > 0)      t.pingT      = Math.max(0, t.pingT - dt);
+    if (t.castGlow > 0)   t.castGlow   = Math.max(0, t.castGlow - dt);
+    if (t.attackTimer > 0) t.attackTimer -= dt;
+    if (t.attackTimer <= 0) t.attacking = false;
+    if (t.attackCooldown > 0) t.attackCooldown -= dt;
+
+    // Downed teammates just lie on the ground, no physics tick.
+    if (t.hp <= 0) {
+      t.state = 'down';
+      // Simulate a res timer
+      t._resTimer = (t._resTimer || 6000) - dt;
+      if (t._resTimer <= 0) {
+        t.hp = t.maxHp;
+        t.mp = t.maxMp;
+        t._resTimer = null;
+        chatPush('SYSTEM', `${t.name} has been revived.`, 'sys');
+        popEmote(t, '✨');
+      }
+      continue;
+    }
+
+    // --- Target selection ------------------------------------------------
+    // Find the nearest damaged/alive monster within a generous screen radius.
+    let best = null, bestD = 999999;
+    for (const m of game.monsters) {
+      if (!m || m.currentHp <= 0) continue;
+      const dx = (m.x + m.w/2) - (t.x + t.w/2);
+      const dy = (m.y + m.h/2) - (t.y + t.h/2);
+      const d  = Math.hypot(dx, dy);
+      if (d < bestD && d < 520) { best = m; bestD = d; }
+    }
+    t.target = best;
+
+    // --- Movement -------------------------------------------------------
+    let tx, ty;
+    if (t.target) {
+      tx = t.target.x + t.target.w/2 + (t.followOffset * 0.15);
+      ty = t.target.y;
+    } else {
+      // Wander near the player at an offset, within map bounds.
+      tx = player.x + t.followOffset;
+      ty = player.y;
+    }
+    const dx = tx - (t.x + t.w/2);
+    const dist = Math.abs(dx);
+    const followDead = t.target ? COOP.ATTACK_RANGE - 6 : 40;
+
+    if (dist > followDead) {
+      t.vx = Math.sign(dx) * COOP.SPEED;
+      t.facing = dx >= 0 ? 1 : -1;
+      t.state = 'walk';
+    } else {
+      t.vx *= 0.75;
+      if (Math.abs(t.vx) < 0.1) t.vx = 0;
+      t.state = t.attacking ? (t.cls === 'mage' || t.cls === 'archer' ? 'cast' : 'attack') : 'idle';
+    }
+
+    // Jump if the target is clearly above us (e.g. on a platform).
+    if (t.onGround && t.target && (t.target.y + t.target.h) < t.y - 10) {
+      t.vy = -9.5;
+      t.onGround = false;
+    }
+
+    // Integrate physics (same as player)
+    t.vy += COOP.GRAVITY;
+    if (t.vy > 14) t.vy = 14;
+    t.x += t.vx;
+    t.y += t.vy;
+    // World clamp
+    if (t.x < 10) t.x = 10;
+    if (t.x > W2 - t.w - 10) t.x = W2 - t.w - 10;
+    if (t.y > 600) { t.y = 400; t.vy = 0; }   // ooplost
+
+    checkPlatformCollision(t);
+
+    // --- Combat ---------------------------------------------------------
+    if (t.target && t.target.currentHp > 0 && t.attackCooldown <= 0) {
+      const m = t.target;
+      const mx = m.x + m.w/2, my = m.y + m.h/2;
+      const dx2 = mx - (t.x + t.w/2);
+      const dy2 = my - (t.y + t.h/2);
+      const d2  = Math.hypot(dx2, dy2);
+      const ranged = (t.cls === 'mage' || t.cls === 'archer');
+      const range  = ranged ? COOP.CAST_RANGE : COOP.ATTACK_RANGE;
+      if (d2 < range) {
+        t.facing = dx2 >= 0 ? 1 : -1;
+        t.attacking = true;
+        t.attackTimer = ranged ? 420 : 320;
+        t.attackCooldown = ranged ? (900 + Math.random() * 400) : (540 + Math.random() * 260);
+        t.castGlow = ranged ? 420 : 180;
+        teammateStrike(t, m, ranged);
+      }
+    }
+
+    // Mana regen
+    t.mp = Math.min(t.maxMp, t.mp + 0.08 * (dt / 16));
+  }
+
+  // Party-panel DOM refresh throttled (HP/MP bars move)
+  if (game.time % 8 === 0) coop.partyDirty = true;
+}
+
+// Teammate deals a small amount of damage to a monster — uses the canonical
+// hitMonster() hook so damage numbers, hit-flash, aggro and on-death logic
+// all work. Skill 'ally' tag keeps it out of player-only combo procs.
+function teammateStrike(t, m, ranged) {
+  if (!m || m.currentHp <= 0) return;
+  const base = 6 + t.level * 3;
+  const variance = 0.7 + Math.random() * 0.9;
+  const isCrit = Math.random() < 0.18;
+  const dmg = Math.max(1, Math.floor(base * variance * (isCrit ? 1.8 : 1)));
+  // Spawn a tiny projectile trail for ranged teammates (purely cosmetic).
+  if (ranged) {
+    const fromX = t.x + t.w/2, fromY = t.y + 12;
+    const toX = m.x + m.w/2, toY = m.y + m.h/2;
+    const steps = 8;
+    for (let i = 0; i < steps; i++) {
+      const f = i / steps;
+      game.particles && game.particles.push({
+        x: fromX + (toX - fromX) * f,
+        y: fromY + (toY - fromY) * f - Math.sin(f * Math.PI) * 18,
+        vx: 0, vy: 0, life: 16 - i, size: 2,
+        color: t.cls === 'mage' ? '#9fb8ff' : '#b0ffb0',
+      });
+    }
+  }
+  // Deal damage through the canonical pipe.
+  if (typeof hitMonster === 'function') hitMonster(m, dmg, isCrit, 'ally');
+  // If they got the killing blow, chatter + loot-share popup.
+  if (m.currentHp <= 0) {
+    handleTeammateKill(t, m);
+  } else if (Math.random() < 0.05) {
+    // Small chance they yell something combat-y.
+    chatPush(t.name, pickPhrase('pull'), 'chat', t.cls);
+    popSpeechBubble(t, pickPhrase('pull'));
+  }
+}
+
+// Reactions when a teammate scores a kill.
+function handleTeammateKill(t, m) {
+  if (Math.random() < 0.55) {
+    const line = pickPhrase('kill');
+    chatPush(t.name, line, 'chat', t.cls);
+    popSpeechBubble(t, line);
+  }
+  if (Math.random() < 0.35) popEmote(t, COOP_EMOTES[Math.floor(Math.random() * COOP_EMOTES.length)]);
+  // Loot-share popup: occasionally credit a random party member with "their cut"
+  if (Math.random() < 0.45) {
+    const crew = [{ name:'You', me:true }, ...coop.teammates.map(x => ({ name:x.name }))];
+    const pick = crew[Math.floor(Math.random() * crew.length)];
+    const cut  = 5 + Math.floor(Math.random() * 22) + (m.mesosDrop ? Math.floor(m.mesosDrop / 4) : 0);
+    chatPush('LOOT', `${pick.name} earned ${cut} Lumens (party split)`, 'loot');
+  }
+}
+
+// Attach a tiny "..." speech bubble above a teammate for a few seconds.
+function popSpeechBubble(t, text) {
+  t.speakBubble = { text: text.slice(0, 42), life: 2400, color: '#ffffff' };
+  t.nameFlashT = 600;
+}
+function popEmote(t, icon) {
+  t.emoteBubble = { icon, life: 1500 };
 }
 
 // =========================================================================
@@ -10675,6 +11173,488 @@ function _spawnPlayerTrail() {
   });
 }
 
+// =========================================================================
+// CO-OP TEAMMATE RENDERING
+// =========================================================================
+// Compact chibi renderer — deliberately simplified vs. drawCuteCharacter()
+// so teammates read as peer characters without duplicating 300 lines of
+// layered animation code. Uses the same CUTE_PAL + CUTE_CLASS_COLORS
+// palette so they match the player's art direction.
+function drawTeammates() {
+  if (!coop.enabled) return;
+  for (const t of coop.teammates) drawTeammate(t);
+}
+
+// =========================================================================
+// CO-OP DOM UI (party panel + chat)
+// =========================================================================
+function chatPush(from, text, type, cls) {
+  const color = cls ? ({
+    warrior:'#ff8a8a', rogue:'#c8a8ff', mage:'#9fb8ff', archer:'#8adfa8',
+  }[cls] || '#ffffff') : null;
+  coop.chat.push({ from, text, type: type || 'chat', color, t: Date.now() });
+  if (coop.chat.length > coop.chatMax) coop.chat.splice(0, coop.chat.length - coop.chatMax);
+  coop.chatDirty = true;
+}
+
+function renderChatPanel() {
+  if (!coop.chatDirty) return;
+  coop.chatDirty = false;
+  const logEl = document.getElementById('chat-log');
+  if (!logEl) return;
+  // Only render the last ~8 visible lines to stay snappy.
+  const lines = coop.chat.slice(-8);
+  logEl.innerHTML = '';
+  for (const m of lines) {
+    const row = document.createElement('div');
+    row.className = 'chat-line fade-in';
+    if (m.type === 'sys')   row.classList.add('chat-sys');
+    if (m.type === 'loot')  row.classList.add('chat-loot');
+    if (m.type === 'emote') row.classList.add('chat-emote');
+    if (m.type === 'chat') {
+      const nameEl = document.createElement('span');
+      nameEl.className = 'chat-name';
+      nameEl.style.color = m.color || '#ffdd88';
+      nameEl.textContent = m.from + ':';
+      row.appendChild(nameEl);
+      row.appendChild(document.createTextNode(' ' + m.text));
+    } else if (m.type === 'sys') {
+      row.textContent = m.text;
+    } else if (m.type === 'loot') {
+      row.textContent = '💰 ' + m.text;
+    } else if (m.type === 'emote') {
+      row.textContent = m.text;
+    }
+    logEl.appendChild(row);
+  }
+}
+
+function renderPartyPanel() {
+  if (!coop.partyDirty) return;
+  coop.partyDirty = false;
+  const listEl = document.getElementById('pp-list');
+  if (!listEl) return;
+  const countEl = document.getElementById('pp-count');
+  if (countEl) countEl.textContent = (coop.teammates.length + 1) + '/' + COOP.MAX_PARTY;
+
+  const members = [{
+    me: true, icon: '★', label: (player.job || player.master || player.cls || 'hero').toUpperCase(),
+    name: 'You', level: player.level || 1,
+    hp: player.hp, maxHp: player.maxHp || 100,
+    mp: player.mp, maxMp: player.maxMp || 50,
+    cls: player.cls, speaking: false, down: player.hp <= 0,
+  }, ...coop.teammates.map(t => ({
+    me: false, icon: t.icon, label: t.label.toUpperCase(),
+    name: t.name, level: t.level,
+    hp: t.hp, maxHp: t.maxHp, mp: t.mp, maxMp: t.maxMp,
+    cls: t.cls, speaking: !!t.speakBubble, down: t.hp <= 0, pingT: t.pingT,
+  }))];
+
+  listEl.innerHTML = '';
+  for (const m of members) {
+    const row = document.createElement('div');
+    row.className = 'pp-member' + (m.me ? ' me' : '') + (m.speaking ? ' speaking' : '') + (m.down ? ' down' : '');
+    const cc = CUTE_CLASS_COLORS[m.cls] || CUTE_CLASS_COLORS.warrior;
+    row.style.borderLeftColor = m.me ? '#ffdd55' : cc.body;
+    // Avatar
+    const av = document.createElement('div');
+    av.className = 'pp-avatar';
+    av.textContent = m.icon;
+    av.style.background = `linear-gradient(145deg, ${cc.body2}, ${cc.bodyShd})`;
+    row.appendChild(av);
+    // Info
+    const info = document.createElement('div');
+    info.className = 'pp-info';
+    const nameRow = document.createElement('div');
+    nameRow.className = 'pp-name-row';
+    nameRow.innerHTML = `<span class="pp-name">${escapeHtml(m.name)}</span><span class="pp-lvl">Lv.${m.level}</span>`;
+    info.appendChild(nameRow);
+    const clsRow = document.createElement('div');
+    clsRow.className = 'pp-cls';
+    clsRow.textContent = m.label;
+    info.appendChild(clsRow);
+    // HP bar
+    const hpBar = document.createElement('div');
+    hpBar.className = 'pp-bar';
+    hpBar.innerHTML = `<div class="pp-fill pp-hp" style="width:${Math.max(0, Math.min(100, (m.hp / m.maxHp) * 100)).toFixed(1)}%"></div>`;
+    info.appendChild(hpBar);
+    // MP bar
+    const mpBar = document.createElement('div');
+    mpBar.className = 'pp-bar';
+    mpBar.innerHTML = `<div class="pp-fill pp-mp" style="width:${Math.max(0, Math.min(100, (m.mp / m.maxMp) * 100)).toFixed(1)}%"></div>`;
+    info.appendChild(mpBar);
+    row.appendChild(info);
+    // Ping
+    if (m.pingT && m.pingT > 0) {
+      const ping = document.createElement('div');
+      ping.className = 'pp-ping';
+      ping.textContent = '!';
+      row.appendChild(ping);
+    }
+    listEl.appendChild(row);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
+}
+
+// Chat input handling — Enter to open/submit, Escape to cancel.
+function openChatInput() {
+  const panel = document.getElementById('chat-panel');
+  const input = document.getElementById('chat-input');
+  if (!panel || !input) return;
+  coop.chatting = true;
+  panel.classList.add('typing');
+  input.value = '';
+  input.focus();
+}
+function closeChatInput() {
+  const panel = document.getElementById('chat-panel');
+  const input = document.getElementById('chat-input');
+  coop.chatting = false;
+  if (panel) panel.classList.remove('typing');
+  if (input) input.blur();
+  // Send focus back to the canvas so movement keys work again.
+  if (canvas && canvas.focus) canvas.focus();
+}
+function submitChatInput() {
+  const input = document.getElementById('chat-input');
+  if (!input) return closeChatInput();
+  const txt = input.value.trim();
+  if (txt) {
+    chatPush('You', txt, 'chat');
+    // Simulated reply — a random party member chirps back most of the time.
+    if (coop.teammates.length && Math.random() < 0.7) {
+      const t = coop.teammates[Math.floor(Math.random() * coop.teammates.length)];
+      setTimeout(() => {
+        if (t.hp <= 0) return;
+        const reply = pickReply(txt);
+        chatPush(t.name, reply, 'chat', t.cls);
+        popSpeechBubble(t, reply);
+      }, 600 + Math.random() * 1400);
+    }
+  }
+  closeChatInput();
+}
+function pickReply(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('boss'))    return 'let me pot up first';
+  if (m.includes('pull'))    return 'on it!';
+  if (m.includes('gg'))      return 'gg wp';
+  if (m.includes('hi') || m.includes('hello') || m.includes('hey')) return 'hi!';
+  if (m.includes('?'))       return 'idk lol';
+  if (m.includes('heal'))    return 'sry no white pots';
+  return pickPhrase(Math.random() < 0.5 ? 'praise' : 'idle');
+}
+
+// Ping the camera midpoint — random teammate calls attention to a spot.
+function partyPing() {
+  const t = coop.teammates.length ? coop.teammates[Math.floor(Math.random() * coop.teammates.length)] : null;
+  if (t) {
+    t.pingT = 900;
+    coop.partyDirty = true;
+    chatPush(t.name, pickPhrase('ping'), 'chat', t.cls);
+    popEmote(t, '❗');
+  }
+}
+
+// Player emote — pops a floating icon above the player's head.
+function playerEmote(icon) {
+  icon = icon || COOP_EMOTES[Math.floor(Math.random() * COOP_EMOTES.length)];
+  game.damageNumbers.push({
+    x: player.x + player.w/2 - 6, y: player.y - 6, vy: -2.4,
+    text: icon, life: 55, color: '#ffffff', size: 22,
+  });
+  chatPush('You', icon, 'emote');
+}
+
+function drawTeammate(t) {
+  const cc = teammateClassColor(t);
+  const sx = Math.round(t.x - game.camera.x);
+  const sy = Math.round(t.y);
+  if (sx + 40 < 0 || sx - 40 > W) {
+    // Off-screen: still show a directional chevron at the edge
+    drawOffscreenPartyArrow(t);
+    return;
+  }
+  const cx = sx + t.w / 2;
+  const f  = t.facing;
+  const pxf = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
+  const downed = t.hp <= 0;
+  const speedN = Math.min(1, Math.abs(t.vx) / 5);
+  const idleT = game.time * 0.05 + t.id.length;
+  const walkT = game.time * 0.3 + t.id.length;
+  const bb = Math.sin(idleT) * 0.8 * (1 - speedN) + Math.sin(walkT) * 1.4 * speedN;
+  const hb = Math.sin(idleT + 0.4) * 2.0 * (1 - speedN) + Math.sin(walkT + 0.6) * 2.4 * speedN;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx, sy + t.h, 13, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Downed: draw prone silhouette + red X and return
+  if (downed) {
+    ctx.save(); ctx.globalAlpha = 0.55;
+    pxf(sx + 4, sy + 34, 24, 12, CUTE_PAL.outline);
+    pxf(sx + 6, sy + 36, 20, 8, cc.body);
+    ctx.restore();
+    ctx.fillStyle = '#ff6677'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('✖', cx, sy + 4);
+    ctx.textAlign = 'left';
+    drawTeammateNameTag(t, sx, sy);
+    return;
+  }
+
+  // Cast / attack glow halo (behind body)
+  if (t.castGlow > 0) {
+    const g = 1 - Math.min(1, t.castGlow / 400);
+    const haloCol = t.cls === 'mage' ? '#9fb8ff' : t.cls === 'archer' ? '#b0ffb0'
+                  : t.cls === 'rogue' ? '#c9a8ff' : '#ffd28a';
+    ctx.fillStyle = haloCol + '66';
+    ctx.beginPath();
+    ctx.ellipse(cx, sy + t.h / 2 + bb, t.w * (0.6 + g * 0.3), t.h * (0.4 + g * 0.2), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Swing arc (visible for melee attacks)
+  const swingT = t.attacking ? Math.min(1, (320 - t.attackTimer) / 320) : 0;
+  const swingAng = f * Math.sin(Math.pow(swingT, 0.7) * Math.PI) * 0.28;
+
+  // === LEGS + BOOTS ===
+  const wc = t.state === 'walk' ? Math.floor(Math.sin(game.time * 0.3) * 1.5) : 0;
+  pxf(sx + 9, sy + 40 + bb, 5, 6, CUTE_PAL.pants);
+  pxf(sx + 18, sy + 40 + bb, 5, 6, CUTE_PAL.pants);
+  pxf(sx + 9, sy + 40 + bb, 1, 6, CUTE_PAL.pantsShd);
+  pxf(sx + 18, sy + 40 + bb, 1, 6, CUTE_PAL.pantsShd);
+  pxf(sx + 8, sy + 44 + bb + wc, 7, 4, CUTE_PAL.boot);
+  pxf(sx + 17, sy + 44 + bb - wc, 7, 4, CUTE_PAL.boot);
+  pxf(sx + 8, sy + 44 + bb + wc, 7, 1, CUTE_PAL.bootTop);
+  pxf(sx + 17, sy + 44 + bb - wc, 7, 1, CUTE_PAL.bootTop);
+
+  // === TORSO (rotated by swing so upper body pivots for attacks) ===
+  const hipY = sy + 36 + bb;
+  ctx.save();
+  ctx.translate(cx, hipY);
+  ctx.rotate(swingAng);
+  ctx.translate(-cx, -hipY);
+  const topY = sy + 24 + bb;
+  // Outline
+  pxf(sx + 6, topY, 20, 1, CUTE_PAL.outline);
+  pxf(sx + 6, topY, 1, 13, CUTE_PAL.outline);
+  pxf(sx + 25, topY, 1, 13, CUTE_PAL.outline);
+  // Body fill
+  pxf(sx + 7, topY + 1, 18, 2, cc.body2);
+  pxf(sx + 7, topY + 3, 18, 5, cc.body);
+  pxf(sx + 7, topY + 3, 2, 5, cc.bodyShd);
+  pxf(sx + 8, topY + 8, 16, 4, cc.body);
+  pxf(sx + 8, topY + 8, 2, 4, cc.bodyShd);
+  pxf(sx + 9, topY + 12, 14, 2, cc.body);
+  // Collar band for that "player gear" feel
+  pxf(sx + 12, topY + 1, 8, 1, '#ffffff');
+
+  // Arms — outside of rotation for a more natural swing
+  ctx.restore();
+  const armSwing = t.attacking ? Math.sin(swingT * Math.PI) * 8 : Math.sin(walkT) * 1.5 * speedN;
+  // Back arm
+  pxf(sx + (f > 0 ? 4 : 24), topY + 5, 3, 8, cc.body);
+  pxf(sx + (f > 0 ? 4 : 24), topY + 5, 1, 8, cc.bodyShd);
+  // Front arm (attack hand)
+  pxf(sx + (f > 0 ? 22 : 5), topY + 5 - armSwing, 3, 8, cc.body2);
+  // Class weapon flourish: tiny weapon icon drawn in the front hand on attack
+  if (t.attacking) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const wIcon = t.cls === 'warrior' ? '/' : t.cls === 'rogue' ? '•' : t.cls === 'mage' ? '*' : '>';
+    ctx.fillText(wIcon, sx + (f > 0 ? 27 : 3), topY + 12 - armSwing);
+    ctx.textAlign = 'left';
+  }
+
+  // === HEAD ===
+  const headY = sy + 8 + hb + bb;
+  // Head outline
+  pxf(sx + 8, headY, 16, 1, CUTE_PAL.outline);
+  pxf(sx + 8, headY + 15, 16, 1, CUTE_PAL.outline);
+  pxf(sx + 8, headY, 1, 16, CUTE_PAL.outline);
+  pxf(sx + 23, headY, 1, 16, CUTE_PAL.outline);
+  // Skin
+  pxf(sx + 9, headY + 1, 14, 14, CUTE_PAL.skin);
+  pxf(sx + 9, headY + 1, 2, 14, CUTE_PAL.skinShd);
+  // Cheeks
+  pxf(sx + (f > 0 ? 12 : 17), headY + 10, 2, 1, CUTE_PAL.blush);
+  pxf(sx + (f > 0 ? 18 : 13), headY + 10, 2, 1, CUTE_PAL.blush);
+  // Hair (class-tinted)
+  pxf(sx + 7, headY - 2, 18, 5, cc.hair);
+  pxf(sx + 7, headY - 2, 18, 2, cc.hairHi);
+  // Side hair fringe hinting at gender/style variety
+  const fringe = t.hairShift;
+  pxf(sx + 8 + fringe, headY + 2, 5, 3, cc.hair);
+  pxf(sx + 17 - fringe, headY + 2, 5, 3, cc.hair);
+  // Eyes (direction-aware)
+  pxf(sx + (f > 0 ? 13 : 12), headY + 7, 2, 3, CUTE_PAL.outline);
+  pxf(sx + (f > 0 ? 18 : 17), headY + 7, 2, 3, CUTE_PAL.outline);
+  // Eye shine
+  pxf(sx + (f > 0 ? 13 : 12), headY + 7, 1, 1, '#ffffff');
+  pxf(sx + (f > 0 ? 18 : 17), headY + 7, 1, 1, '#ffffff');
+  // Mouth (smiles more when in combat / speaking)
+  const smiling = !!t.speakBubble || !!t.target;
+  if (smiling) pxf(sx + 15, headY + 11, 2, 1, CUTE_PAL.outline);
+  else pxf(sx + 15, headY + 11, 1, 1, CUTE_PAL.outline);
+
+  // Name tag + bubbles
+  drawTeammateNameTag(t, sx, sy);
+  drawTeammateBubbles(t, sx, sy);
+}
+
+// Off-screen indicator — small arrow at the canvas edge pointing to the teammate.
+function drawOffscreenPartyArrow(t) {
+  const midY = H / 2;
+  const camX = game.camera.x;
+  const relX = (t.x + t.w/2) - camX;
+  let ex, label;
+  if (relX < 0) { ex = 16; label = '◀'; }
+  else { ex = W - 16; label = '▶'; }
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.arc(ex, midY, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ffdd88'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#ffdd88';
+  ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, ex, midY - 1);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText(t.name, ex, midY + 22);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+function drawTeammateNameTag(t, sx, sy) {
+  const tagY = sy - 14;
+  const cx = sx + t.w / 2;
+  const flash = t.nameFlashT > 0 ? 1 : 0;
+  ctx.save();
+  // HP bar under the name
+  const barW = 32, barH = 3;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(cx - barW/2 - 1, tagY + 8, barW + 2, barH + 2);
+  ctx.fillStyle = '#331';
+  ctx.fillRect(cx - barW/2, tagY + 9, barW, barH);
+  const hpPct = Math.max(0, Math.min(1, t.hp / t.maxHp));
+  ctx.fillStyle = hpPct > 0.55 ? '#66dd77' : hpPct > 0.3 ? '#ffcc66' : '#ff5566';
+  ctx.fillRect(cx - barW/2, tagY + 9, barW * hpPct, barH);
+  // Name pill
+  const label = t.name;
+  ctx.font = 'bold 10px sans-serif';
+  const tw = ctx.measureText(label).width + 18;
+  ctx.fillStyle = flash ? 'rgba(255,240,170,0.9)' : 'rgba(0,0,0,0.55)';
+  ctx.fillRect(cx - tw/2, tagY - 2, tw, 11);
+  ctx.strokeStyle = 'rgba(140,110,220,0.6)'; ctx.lineWidth = 1;
+  ctx.strokeRect(cx - tw/2, tagY - 2, tw, 11);
+  // Level badge
+  const cc = teammateClassColor(t);
+  ctx.fillStyle = cc.body;
+  ctx.fillRect(cx - tw/2 + 1, tagY - 1, 14, 9);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(t.level), cx - tw/2 + 8, tagY + 6);
+  // Name
+  ctx.fillStyle = flash ? '#1a0d00' : '#ffffff';
+  ctx.fillText(label, cx + 6, tagY + 6);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function drawTeammateBubbles(t, sx, sy) {
+  const cx = sx + t.w / 2;
+  if (t.speakBubble) {
+    const life = t.speakBubble.life;
+    const a = Math.min(1, life / 500);
+    const text = t.speakBubble.text;
+    ctx.save();
+    ctx.font = '10px sans-serif';
+    const tw = Math.min(220, ctx.measureText(text).width) + 12;
+    const bx = cx - tw/2, by = sy - 32;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.strokeStyle = '#8866cc'; ctx.lineWidth = 1;
+    roundRect(bx, by, tw, 16, 5); ctx.fill(); ctx.stroke();
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, by + 16);
+    ctx.lineTo(cx, by + 21);
+    ctx.lineTo(cx + 3, by + 16);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2a1a40';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, cx, by + 11);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+  if (t.emoteBubble) {
+    const life = t.emoteBubble.life;
+    const t01 = 1 - life / 1500;
+    const yOff = -6 - t01 * 18;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - t01);
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(t.emoteBubble.icon, cx, sy - 14 + yOff);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+}
+
+// Helper used by speech bubbles.
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+// Name tag for the main player (drawn in the main render pass so it matches).
+function drawPlayerNameTag() {
+  if (!coop.enabled) return;
+  const sx = Math.round(player.x - game.camera.x);
+  const sy = Math.round(player.y);
+  const tagY = sy - 14;
+  const cx = sx + player.w / 2;
+  ctx.save();
+  const label = 'You';
+  ctx.font = 'bold 10px sans-serif';
+  const tw = ctx.measureText(label).width + 22;
+  // Party leader crown glow
+  ctx.fillStyle = 'rgba(80,60,0,0.85)';
+  ctx.fillRect(cx - tw/2, tagY - 2, tw, 11);
+  ctx.strokeStyle = '#ffdd55'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(cx - tw/2, tagY - 2, tw, 11);
+  // Level badge
+  ctx.fillStyle = '#3a2050';
+  ctx.fillRect(cx - tw/2 + 1, tagY - 1, 14, 9);
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+  ctx.fillText(String(player.level || 1), cx - tw/2 + 8, tagY + 6);
+  ctx.fillStyle = '#ffee88';
+  ctx.fillText('★ ' + label, cx + 5, tagY + 6);
+  ctx.textAlign = 'left';
+  // HP bar
+  const barW = 34, barH = 3;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(cx - barW/2 - 1, tagY + 8, barW + 2, barH + 2);
+  ctx.fillStyle = '#331';
+  ctx.fillRect(cx - barW/2, tagY + 9, barW, barH);
+  const hpPct = Math.max(0, Math.min(1, player.hp / (player.maxHp || 100)));
+  ctx.fillStyle = hpPct > 0.55 ? '#66dd77' : hpPct > 0.3 ? '#ffcc66' : '#ff5566';
+  ctx.fillRect(cx - barW/2, tagY + 9, barW * hpPct, barH);
+  ctx.restore();
+}
+
 function drawPlayer() {
   const sx = Math.round(player.x - game.camera.x);
   const sy = Math.round(player.y);
@@ -13313,6 +14293,13 @@ function renderSkillBar() {
 }
 
 function updateUI() {
+  // Multiplayer DOM refresh (party HP/MP bars + chat log)
+  if (typeof coop !== 'undefined') {
+    // Mark party dirty on every tick — HP/MP bars need to follow live values.
+    coop.partyDirty = true;
+    renderPartyPanel();
+    renderChatPanel();
+  }
   document.getElementById('level').textContent = player.level;
   document.getElementById('skill-points').textContent = player.skillPoints;
   const clsEl = document.getElementById('class');
@@ -13461,6 +14448,7 @@ function loop(time) {
     updateMonsters(dt);
     updateProjectiles(dt);
     updateMinions(dt);
+    updateTeammates(dt);
     updateParticles(dt);
     updateFxInstances(dt);
     updateSmoothFx(dt);
@@ -13514,7 +14502,9 @@ function loop(time) {
   drawHazards();
   drawAfterImages();
   drawMinions();
+  drawTeammates();
   drawPlayer();
+  drawPlayerNameTag();
   drawPet();
   drawParticles();
   drawFxInstances();

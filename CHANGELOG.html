@@ -122,6 +122,11 @@
 </header>
 
 <div class="summary-grid">
+  <div class="summary-card" style="border-color: rgba(255,180,74,0.5); box-shadow: 0 0 16px rgba(255,180,74,0.15);">
+    <div class="phase" style="color:var(--legendary);">v0.11.0 · New</div>
+    <div class="title">Multiplayer prototype</div>
+    <div class="diff">Party panel · chat · 3 AI teammates · pings · emotes</div>
+  </div>
   <div class="summary-card">
     <div class="phase">Phase 1</div>
     <div class="title">Save + Web Audio</div>
@@ -147,6 +152,87 @@
 <div class="callout">
   <b>Heads-up.</b> An earlier implementation of these phases targeted <code>v0.5.1</code> and was preserved locally at tag <code>phase-1-2-3-on-v0.5.1</code>. This is the rebuild against the current <code>v0.9.8</code> codebase, which had moved substantially (new bosses like Gravitos, minimap/taxi, chibi character rewrite).
 </div>
+
+<h2>v0.11.0 <span class="tag">Multiplayer prototype</span></h2>
+
+<p class="lede" style="margin-bottom:16px;">
+  A visual-only co-op simulation layered on top of the single-player game — what LevelX
+  would <i>look</i> and <i>feel</i> like if it shipped with real networking. No backend,
+  no sockets, no lobby — just three convincing AI "teammates" who wander, fight, chatter,
+  and share loot alongside you, plus a real party panel and scrolling chat window.
+</p>
+
+<h3><span class="pill legendary">👥</span>Live party panel (top-left)</h3>
+<ul>
+  <li>Four-slot party card showing <b>You</b> (gold star, party leader) plus three AI members.</li>
+  <li>Every row has name, level, class label, coloured class avatar, live HP bar, live MP bar.</li>
+  <li>Speaking member glows with a soft green ring. Downed members desaturate + show a <code>✖</code> prone silhouette on-canvas until the 6-second auto-revive.</li>
+  <li>Pulsing <b>LIVE</b> dot in the title — the multiplayer-session tell.</li>
+</ul>
+
+<h3><span class="pill epic">💬</span>Chat panel (bottom-left) + <kbd>Enter</kbd></h3>
+<ul>
+  <li>Scrolling chat log (last 8 lines visible) with fade-in animation on new messages.</li>
+  <li><b>Four message types:</b> player chat (class-coloured names), system (join/sync/revive), loot (💰 party splits), and emote.</li>
+  <li>Press <kbd>Enter</kbd> to open the inline chat input; type freely, <kbd>Enter</kbd> again to send, <kbd>Esc</kbd> to cancel. Movement keys are fully suppressed while typing.</li>
+  <li>Teammates <b>reply contextually</b> to what you type — keywords like <code>boss</code>, <code>pull</code>, <code>heal</code>, <code>gg</code>, <code>hi</code>, or <code>?</code> trigger tailored responses. Otherwise you get a random idle chirp or praise line.</li>
+  <li><b>Ambient chatter</b> fires every 6–12 seconds — party banter like <i>"this map slaps"</i>, <i>"wanna do boss next?"</i>, <i>"who tanks?"</i></li>
+</ul>
+
+<h3><span class="pill rare">🎯</span>Teammate AI — they actually play the game</h3>
+<ul>
+  <li><b>Follow + engage:</b> teammates target the nearest alive monster within ~520px, walk to it, and attack inside melee (46px) or ranged (260px) range — gravity, platform collisions, and world bounds all respected via <code>checkPlatformCollision()</code>.</li>
+  <li><b>Real damage</b> flows through the canonical <code>hitMonster(m, dmg, isCrit, 'ally')</code> pipe so damage numbers, hit-flash, squash-and-stretch, and on-death drops all fire correctly.</li>
+  <li>Per-class cast flavour: <b>Mages</b> (blue halo) and <b>Archers</b> (green trail) shoot particle projectiles; <b>Warriors</b> and <b>Rogues</b> pivot into a swing-arc melee pose with a weapon glyph in the front hand.</li>
+  <li><b>Downed state</b> when HP hits 0 — a red <code>✖</code> marker sits over the body; auto-revive after 6 seconds with a <code>SYSTEM</code> line and a ✨ emote.</li>
+  <li><b>Off-screen indicators</b> — when a teammate wanders past the camera edge, a yellow-outlined chevron (◀ / ▶) pulses at the canvas border with their name under it, so you always know where the party is.</li>
+</ul>
+
+<h3><span class="pill epic">✨</span>Floating name tags — over everyone's head</h3>
+<ul>
+  <li><b>Player tag:</b> gold pill, <code>★ You</code>, purple level badge, colour-graded HP bar underneath.</li>
+  <li><b>Teammate tags:</b> dark pill, class-coloured level badge, HP bar that turns yellow &lt;55% and red &lt;30%.</li>
+  <li>Tag flashes warm-gold for 600 ms whenever that teammate speaks, so chat lines visibly tie back to the character saying them.</li>
+  <li>Speech bubbles draw above the head — white rounded pill with a <code>#8866cc</code> border and a pointer tail, fading out over 2.4 s. Emote reactions rise and fade over 1.5 s.</li>
+</ul>
+
+<h3><span class="pill rare">📣</span>Pings + emotes + shared loot</h3>
+<ul>
+  <li><kbd>G</kbd> — a random party member <b>pings</b>. Their avatar in the party panel gets a yellow <code>!</code> badge, they drop a <code>❗</code> emote, and a location line prints in chat (<i>"check here!"</i>, <i>"portal here"</i>, etc.).</li>
+  <li><kbd>Y</kbd> — you <b>emote</b>. A random icon from the 12-glyph pool (👋 🎉 🫡 🔥 💪 👍 ❤️ 😤 🤝 ✨ 🪄 🏹) pops above your head as a damage-number–style floater, and mirrors into chat as an italicised emote line.</li>
+  <li><b>Shared-loot popups:</b> when teammates kill a monster there's a 45% chance a <code>💰 [Name] earned N Lumens (party split)</code> line is inserted into chat, round-robin across all four members including you. Kill streaks of 3+ get their own <code>Party streak!</code> bonus line.</li>
+  <li><b>Reactive banter:</b> when <i>you</i> score a kill, a 45% chance a teammate types something like <i>"MVP"</i>, <i>"let him cook"</i>, or drops a 🔥 emote above their head.</li>
+</ul>
+
+<h3><span class="pill legendary">🎨</span>Visual fidelity — teammates look like players</h3>
+<ul>
+  <li>Compact chibi renderer (<code>drawTeammate()</code>) reuses the same <code>CUTE_PAL</code> + <code>CUTE_CLASS_COLORS</code> palette as the main player, so all four party members read as peer characters rather than reskinned NPCs.</li>
+  <li>Per-class body / hair tinting: Warrior red, Rogue purple, Mage blue, Archer green — matched to the class-select art.</li>
+  <li>Independently animated idle breath + walk bob + bobblehead head-sway, phase-shifted per teammate via their id hash so the four characters don't march in lock-step.</li>
+  <li>Attack animation: upper-body swing pivots around the hip while the front arm flicks forward with a weapon glyph (<code>/</code> <code>•</code> <code>*</code> <code>&gt;</code>); a translucent class-tinted halo appears behind ranged casters during their cast window.</li>
+</ul>
+
+<h3>How it hooks in — zero risk to existing systems</h3>
+<ul>
+  <li>New state lives on a single top-level <code>coop</code> object — <code>teammates[]</code>, <code>chat[]</code>, <code>chatting</code>, DOM-dirty flags.</li>
+  <li><code>initCoop()</code> runs at the end of <code>loadMap()</code> so teammates respawn next to you on every map change; a <i>"Party re-synced on …"</i> system line announces it.</li>
+  <li><code>updateTeammates(dt)</code> sits in the main update chain next to <code>updateMinions(dt)</code>; <code>drawTeammates()</code> + <code>drawPlayerNameTag()</code> render between <code>drawMinions()</code> and <code>drawPet()</code> so z-ordering matches the player.</li>
+  <li>DOM updates (<code>renderPartyPanel()</code>, <code>renderChatPanel()</code>) are gated behind <code>partyDirty</code> / <code>chatDirty</code> flags to keep per-frame cost negligible.</li>
+  <li>No save-format changes, no balance changes to player damage / drops / XP — the multiplayer feel is layered <i>on top of</i> the existing game.</li>
+</ul>
+
+<h3>Verification checklist — v0.11.0</h3>
+<ol>
+  <li><b>Party panel.</b> Load the game — top-left shows <code>⚔ Party 4/4</code> with <b>You</b> + three AI members (random names, mixed classes). Pulsing green LIVE dot top-right of panel.</li>
+  <li><b>Chat boot.</b> Chat panel (bottom-left) shows a yellow system line for each teammate joining, followed by a random idle line from the first teammate ~900 ms later.</li>
+  <li><b>Chat typing.</b> Press <kbd>Enter</kbd> — input box opens, movement keys stop moving the player. Type <code>boss</code> then <kbd>Enter</kbd> — a teammate replies with <i>"let me pot up first"</i> within ~2 s.</li>
+  <li><b>Combat assist.</b> Enter a monster map — teammates walk to the nearest mob and hit it. Their damage numbers pop above the monster; HP bar on the party panel ticks down if they take a hit.</li>
+  <li><b>Floating tags.</b> Every character has a name pill + HP bar above them. Walk offscreen — teammates at the camera edge appear as yellow chevron arrows (◀ / ▶) with their names.</li>
+  <li><b>Ping.</b> Press <kbd>G</kbd> — a random teammate's avatar flashes a yellow <code>!</code>; they drop a ❗ emote and a chat line like <i>"check here!"</i>.</li>
+  <li><b>Emote.</b> Press <kbd>Y</kbd> — random emoji floats above your head and a <code>You: 👋</code>-style italic line appears in chat.</li>
+  <li><b>Loot split.</b> Kill 3 mobs in a row — a <code>💰 Party streak!</code> line appears in chat roughly 70% of the time. Teammate kills drop <code>[Name] earned N Lumens (party split)</code> lines.</li>
+  <li><b>Downed + revive.</b> Dev console → spawn a strong mob nearby → wait for a teammate to die. Red <code>✖</code> prone silhouette shows on-canvas, row greys out in party panel. After 6 s, system line confirms the revive and HP refills.</li>
+</ol>
 
 <h2>Phase 1 <span class="tag">Foundation</span></h2>
 
@@ -306,6 +392,10 @@ open maple_game.html</code></pre>
     <tr><td><kbd>F</kbd></td><td>Interact</td></tr>
     <tr><td><kbd>R</kbd> / <kbd>T</kbd></td><td>Quick HP / MP potion</td></tr>
     <tr><td><kbd>1</kbd>+<kbd>2</kbd>+<kbd>3</kbd> <span style="color:var(--muted);">(hold)</span></td><td>Dev console</td></tr>
+    <tr><td colspan="2" style="color:var(--muted); font-size:11px; padding-top:6px;"><b>v0.11.0 — Multiplayer</b></td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Open party chat (Enter again to send · Esc to cancel)</td></tr>
+    <tr><td><kbd>G</kbd></td><td>Party ping — random teammate marks attention</td></tr>
+    <tr><td><kbd>Y</kbd></td><td>Player emote — random icon above your head</td></tr>
   </tbody>
 </table>
 
