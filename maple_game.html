@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.7';
+const GAME_VERSION = 'v0.9.8';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -5753,7 +5753,8 @@ function updateMonsters(dt) {
         }
       }
       // Skill tree: Unstoppable — stun immune
-      player.hitStun = player.tree.stunImmune ? 0 : Math.floor(140 * (1 - getStunResist()));
+      // Melee contact — very brief stagger so player doesn't get stunlocked
+      player.hitStun = player.tree.stunImmune ? 0 : Math.floor(90 * (1 - getStunResist()));
       player.invulnerable = 500;
       // Cancel voluntary actions
       player.attacking = false;
@@ -6899,8 +6900,9 @@ function updateProjectiles(dt) {
         player.hp -= (player._god ? 0 : dmg);
         player.lastHitTime = game.time;
         const stunMul = 1 - getStunResist();
-        player.hitStun = 1500 * stunMul;
-        player.invulnerable = 1500;
+        // Shorter stagger on ranged hits — player stays mobile
+        player.hitStun = 200 * stunMul;
+        player.invulnerable = 700;
         player.attacking = false;
         player.attackTimer = 0;
         player.rushTimer = 0;
@@ -8244,6 +8246,15 @@ function drawBackground() {
   if (game.mapData.isBossArena) drawBossDecor();
 }
 
+// Blend two #rrggbb colours. t=0 → a, t=1 → b.
+function _mixHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round(((pa >> 16) & 0xff) * (1-t) + ((pb >> 16) & 0xff) * t);
+  const g = Math.round(((pa >> 8) & 0xff) * (1-t) + ((pb >> 8) & 0xff) * t);
+  const bl = Math.round((pa & 0xff) * (1-t) + (pb & 0xff) * t);
+  return '#' + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0');
+}
+
 // --- Simple high-rise town skyline ---
 function drawTownDecor() {
   // Flat plaza walkway under buildings
@@ -8267,12 +8278,26 @@ function drawTownDecor() {
     if (sx + b.w < 0 || sx > W) continue;
     const top = 480 - b.h;
 
-    // Shadow side (right 25% of wall)
-    ctx.fillStyle = b.shd;
+    // Build a midtone between wall and shd for a smoother band
+    const mid = _mixHex(b.wall, b.shd, 0.5);
+    const lit = _mixHex(b.wall, '#ffffff', 0.2);
+    const deepShd = _mixHex(b.shd, '#000000', 0.25);
+
+    // Full shadow back
+    ctx.fillStyle = deepShd;
     ctx.fillRect(sx, top, b.w, b.h);
-    // Main wall
+    // Right-side shadow band (inset 1 px so deepShd peeks as outline)
+    ctx.fillStyle = b.shd;
+    ctx.fillRect(sx + 1, top + 1, b.w - 2, b.h - 1);
+    // Transition band (mid tone, 5 px wide) — soft edge between lit and shadow
+    ctx.fillStyle = mid;
+    ctx.fillRect(sx + 1, top + 1, b.w - 14, b.h - 1);
+    // Main lit wall
     ctx.fillStyle = b.wall;
-    ctx.fillRect(sx, top, b.w - 10, b.h);
+    ctx.fillRect(sx + 1, top + 1, b.w - 19, b.h - 1);
+    // Sunlit edge stripe (4 px)
+    ctx.fillStyle = lit;
+    ctx.fillRect(sx + 1, top + 1, 4, b.h - 1);
 
     // Window grid — small square windows in rows
     const cols = 4;
@@ -9280,13 +9305,21 @@ function drawNPCs() {
     const cx = Math.round(npc.x - game.camera.x);
     const feetY = Math.round(npc.y + 44);      // feet line
     if (cx + 40 < 0 || cx - 40 > W) continue;
-    const hb = Math.round(Math.sin((game.time + npc.x) * 0.06) * 2);  // head bobble
+    const hb = Math.sin((game.time + npc.x) * 0.06) * 2.3;  // smooth head bobble
+    const bb = Math.sin((game.time + npc.x) * 0.05) * 0.8;  // body breathe
 
-    // Shadow
+    // Shadow (unaffected by chibi scale)
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
     ctx.ellipse(cx, feetY + 2, 13, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Chibi scale transform — matches the player's proportions
+    ctx.save();
+    ctx.translate(cx, feetY + 2);
+    ctx.scale(1.19, 0.97);
+    ctx.translate(-cx, -(feetY + 2));
+    ctx.translate(0, -4);
 
     // Re-centre coords so everything draws around (cx, feetY)
     // Treat the NPC as a 32-wide figure centred on cx; feet at feetY.
@@ -9374,13 +9407,28 @@ function drawNPCs() {
       px(sx + 27, topY + 11, 4, 1, '#8a6a3a');
     }
 
-    // === HEAD (big chibi) ===
-    const headY = feetY - 52;          // anchor for head top
-    // Outline + skin (30 x 24)
-    px(sx + 1, headY + 0 + hb, 30, 24, CUTE_PAL.outline);
-    px(sx + 2, headY + 1 + hb, 28, 22, CUTE_PAL.skin);
-    // Chin shadow
-    px(sx + 3, headY + 20 + hb, 26, 2, CUTE_PAL.skinShd);
+    // === HEAD (round chibi ball matching the player) ===
+    const headY = feetY - 52;
+    const hcx = sx + 16, hcy = headY + 12 + hb;
+    const hr = 14;
+    // Outline ring
+    ctx.fillStyle = CUTE_PAL.outline;
+    ctx.beginPath(); ctx.arc(hcx, hcy, hr + 1, 0, Math.PI * 2); ctx.fill();
+    // Skin base
+    ctx.fillStyle = CUTE_PAL.skin;
+    ctx.beginPath(); ctx.arc(hcx, hcy, hr, 0, Math.PI * 2); ctx.fill();
+    // Right-side shadow crescent (2-tone)
+    ctx.fillStyle = CUTE_PAL.skinShd;
+    ctx.beginPath();
+    ctx.arc(hcx, hcy, hr, -Math.PI * 0.15, Math.PI * 0.7);
+    ctx.arc(hcx - 3, hcy, hr, Math.PI * 0.7, -Math.PI * 0.15, true);
+    ctx.closePath();
+    ctx.fill();
+    // Chin shadow ellipse
+    ctx.fillStyle = CUTE_PAL.skinShd;
+    ctx.beginPath();
+    ctx.ellipse(hcx, hcy + hr - 2, hr - 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Hair per role
     const hat = rcfg.hat;
@@ -9476,7 +9524,9 @@ function drawNPCs() {
       px(sx + 18, headY + 18 + hb, 1, 1, CUTE_PAL.mouth);
     }
 
-    // Name tag
+    ctx.restore();   // end chibi scale wrapper
+
+    // Name tag (drawn outside the chibi scale so text stays crisp)
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
     const w = ctx.measureText(npc.name).width + 10;
@@ -9657,11 +9707,11 @@ function _chibiApply(sx, sy) {
   const footY = player.y + player.h;
   ctx.save();
   ctx.translate(footX, footY);
-  ctx.scale(1.08, 0.88);                  // chunkier & shorter overall
+  // 10% bigger overall with chibi proportions (wider + slightly taller)
+  ctx.scale(1.19, 0.97);
   ctx.translate(-footX, -footY);
-  // Further stretch the head region upward: draw shifted up so the top 20 px
-  // visually sits 4 px higher, effectively enlarging the head ratio
-  ctx.translate(0, -3);
+  // Lift the whole figure 4 px so the bigger body doesn't clip the ground
+  ctx.translate(0, -4);
 }
 function _chibiRestore() { ctx.restore(); }
 
