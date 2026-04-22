@@ -47,7 +47,13 @@
     pointer-events: none;
     z-index: 41;
   }
-  canvas { display: block; image-rendering: pixelated; }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    /* Gentle pastel/cute palette tone: lift brightness slightly, saturate a
+       touch, and bump contrast for a storybook look */
+    filter: saturate(1.12) brightness(1.04) contrast(1.03);
+  }
 
   #top-ui {
     position: absolute; top: 10px; left: 10px;
@@ -855,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.8.6';
+const GAME_VERSION = 'v0.9.0';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -1244,6 +1250,38 @@ function skillBySlot(slot) {
 // =========================================================================
 // ITEM DEFINITIONS
 // =========================================================================
+// =========================================================================
+// CUTE CHARACTER PALETTE — standardised theme used by the chibi player render
+// =========================================================================
+const CUTE_PAL = {
+  outline:    '#2a1a28',
+  skin:       '#ffd8b8',
+  skinShd:    '#e8b090',
+  eye:        '#2a1a28',
+  eyeHi:      '#ffffff',
+  blush:      'rgba(255,140,180,0.85)',
+  mouth:      '#cc4466',
+  gold:       '#ffcc44',
+  goldHi:     '#ffee88',
+  metal:      '#c0c0d0',
+  metalHi:    '#ffffff',
+  metalShd:   '#7a7a90',
+  belt:       '#6a3a20',
+  pouch:      '#a0683a',
+  pants:      '#5a3a24',
+  pantsShd:   '#3a241a',
+  boot:       '#4a2818',
+  bootTop:    '#6a3a20',
+  trim:       '#fafafa',
+  trimShd:    '#d8d8e0',
+};
+const CUTE_CLASS_COLORS = {
+  warrior: { body:'#d94f4f', bodyShd:'#9a2a2a', body2:'#ff7a7a', hair:'#5a3828', hairHi:'#8a5838' },
+  rogue:   { body:'#8d5fff', bodyShd:'#5a2a9a', body2:'#bb8aff', hair:'#3a2838', hairHi:'#5a4058' },
+  mage:    { body:'#4a7fff', bodyShd:'#2a4a9a', body2:'#7fa8ff', hair:'#3a2820', hairHi:'#5a3828' },
+  archer:  { body:'#4fa96a', bodyShd:'#2a6a3a', body2:'#7fd48a', hair:'#8a5828', hairHi:'#bb7838' },
+};
+
 const ITEM_POOL = {
   weapons: [
     { name:'Wooden Sword',       icon:'🪵', atk:3,  rarity:'common',    price:80,
@@ -9299,8 +9337,13 @@ function drawPlayer() {
     _drawCuteFaceOverlay(sx, sy);
     return;
   }
-  // --- Procedural fallback (existing hand-drawn pixel art below) ---
-
+  // --- Cute chibi character (procedural, uses CUTE_PAL + CUTE_CLASS_COLORS) ---
+  drawCuteCharacter(sx, sy);
+  _chibiRestore();
+  _drawCuteFaceOverlay(sx, sy);
+  return;
+  /* legacy elaborate renderer kept below for reference — unreachable */
+  if (false) {
   const cx = sx + player.w/2;
   const f = player.facing;
   const ghost = player.dodgeTimer > 0;
@@ -9590,8 +9633,294 @@ function drawPlayer() {
     ctx.fillStyle = accVis.glow + 'aa';
     ctx.beginPath(); ctx.arc(sx + player.w/2, sy + 26 + by, 1.5 + ag * 0.3, 0, Math.PI * 2); ctx.fill();
   }
+  } // end legacy unreachable block
   _chibiRestore();
   _drawCuteFaceOverlay(sx, sy);
+}
+
+// =========================================================================
+// CUTE CHIBI CHARACTER — procedural pixel art, class-themed via CUTE palette
+// =========================================================================
+function drawCuteCharacter(sx, sy) {
+  const cls = player.cls || 'warrior';
+  const cc = CUTE_CLASS_COLORS[cls] || CUTE_CLASS_COLORS.warrior;
+  const f = player.facing;
+  const by = player.state === 'idle' ? Math.floor(Math.sin(game.time * 0.05) * 1) : 0;
+  const cx = sx + player.w/2;
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x|0, y|0, w, h); };
+
+  // Ground shadow (soft)
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx, sy + player.h, 13, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rage aura (subtle behind body)
+  if (player.inRage) {
+    ctx.fillStyle = `rgba(255,80,80,${0.25 + Math.sin(game.time * 0.15) * 0.08})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, sy + player.h/2, player.w * 0.9, player.h * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // === LEGS + BOOTS (tiny, chibi-style) ===
+  const wc = player.state === 'walk' ? Math.floor(Math.sin(game.time * 0.3) * 1.5) : 0;
+  // Pants
+  px(sx + 9, sy + 40 + by, 5, 6, CUTE_PAL.pants);
+  px(sx + 18, sy + 40 + by, 5, 6, CUTE_PAL.pants);
+  px(sx + 9, sy + 40 + by, 1, 6, CUTE_PAL.pantsShd);
+  px(sx + 18, sy + 40 + by, 1, 6, CUTE_PAL.pantsShd);
+  // Boots (staggered walk)
+  px(sx + 8, sy + 44 + by + wc, 7, 4, CUTE_PAL.boot);
+  px(sx + 17, sy + 44 + by - wc, 7, 4, CUTE_PAL.boot);
+  px(sx + 8, sy + 44 + by + wc, 7, 1, CUTE_PAL.bootTop);
+  px(sx + 17, sy + 44 + by - wc, 7, 1, CUTE_PAL.bootTop);
+  // Boot outlines
+  px(sx + 8, sy + 47 + by + wc, 7, 1, CUTE_PAL.outline);
+  px(sx + 17, sy + 47 + by - wc, 7, 1, CUTE_PAL.outline);
+
+  // === BODY / TUNIC ===
+  // Outline
+  px(sx + 5, sy + 22 + by, 22, 20, CUTE_PAL.outline);
+  // Main fill
+  px(sx + 6, sy + 22 + by, 20, 18, cc.body);
+  // Left shadow
+  px(sx + 6, sy + 22 + by, 2, 18, cc.bodyShd);
+  // Top highlight
+  px(sx + 6, sy + 22 + by, 20, 1, cc.body2);
+  // White front trim (collar/robe front)
+  px(sx + 10, sy + 24 + by, 12, 16, CUTE_PAL.trim);
+  px(sx + 10, sy + 24 + by, 1, 16, CUTE_PAL.trimShd);
+  px(sx + 21, sy + 24 + by, 1, 16, CUTE_PAL.trimShd);
+  px(sx + 10, sy + 24 + by, 12, 1, CUTE_PAL.trimShd);
+  // Center button line
+  px(sx + 15, sy + 26 + by, 2, 12, cc.body);
+  // Belt
+  px(sx + 5, sy + 34 + by, 22, 3, CUTE_PAL.belt);
+  px(sx + 5, sy + 34 + by, 22, 1, '#8a5a30');
+  // Belt buckle
+  px(sx + 13, sy + 34 + by, 6, 3, CUTE_PAL.gold);
+  px(sx + 13, sy + 34 + by, 6, 1, CUTE_PAL.goldHi);
+  px(sx + 15, sy + 35 + by, 2, 1, '#aa7722');
+  // Pouch on hip
+  px(sx + 22, sy + 35 + by, 4, 5, CUTE_PAL.pouch);
+  px(sx + 22, sy + 35 + by, 4, 1, '#c88a50');
+  px(sx + 22, sy + 39 + by, 4, 1, CUTE_PAL.outline);
+  // Rush trail
+  if (player.rushTimer > 0) {
+    ctx.fillStyle = 'rgba(180,220,255,0.45)';
+    for (let t = 1; t <= 4; t++) {
+      ctx.fillRect(sx - f * t * 8 + 4, sy + 22, player.w - 8, 18);
+    }
+  }
+
+  // === ARMS / SLEEVES ===
+  px(sx + 2, sy + 24 + by, 4, 9, cc.body);
+  px(sx + 26, sy + 24 + by, 4, 9, cc.body);
+  px(sx + 2, sy + 24 + by, 4, 1, cc.body2);
+  px(sx + 26, sy + 24 + by, 4, 1, cc.body2);
+  px(sx + 2, sy + 24 + by, 1, 9, cc.bodyShd);
+  // Hands
+  px(sx + 2, sy + 32 + by, 4, 3, CUTE_PAL.skin);
+  px(sx + 26, sy + 32 + by, 4, 3, CUTE_PAL.skin);
+  px(sx + 2, sy + 34 + by, 4, 1, CUTE_PAL.skinShd);
+  px(sx + 26, sy + 34 + by, 4, 1, CUTE_PAL.skinShd);
+
+  // === CLASS WEAPON ===
+  drawCuteWeapon(sx, sy + by, cls, f, cc);
+
+  // === HEAD (big, chibi) ===
+  px(sx + 3, sy + 2 + by, 26, 22, CUTE_PAL.outline);
+  px(sx + 4, sy + 3 + by, 24, 20, CUTE_PAL.skin);
+  // Chin shadow
+  px(sx + 5, sy + 19 + by, 22, 2, CUTE_PAL.skinShd);
+
+  // === HAIR (anime-chibi) ===
+  // Top crown
+  px(sx + 4, sy + 1 + by, 24, 8, cc.hair);
+  px(sx + 4, sy + 1 + by, 24, 2, cc.hairHi);
+  // Side bangs
+  px(sx + 3, sy + 4 + by, 3, 14, cc.hair);
+  px(sx + 26, sy + 4 + by, 3, 14, cc.hair);
+  px(sx + 3, sy + 4 + by, 1, 12, cc.hairHi);
+  // Front fringe — split across forehead
+  px(sx + 7, sy + 7 + by, 7, 4, cc.hair);
+  px(sx + 18, sy + 7 + by, 7, 4, cc.hair);
+  // Hair highlight streaks
+  px(sx + 8, sy + 3 + by, 3, 2, cc.hairHi);
+  px(sx + 21, sy + 3 + by, 3, 2, cc.hairHi);
+
+  // === EYES (big round chibi) ===
+  // Left eye
+  px(sx + 9, sy + 11 + by, 4, 5, CUTE_PAL.eye);
+  px(sx + 10, sy + 11 + by, 2, 2, CUTE_PAL.eyeHi);
+  px(sx + 10, sy + 14 + by, 1, 1, CUTE_PAL.eyeHi);
+  // Right eye
+  px(sx + 19, sy + 11 + by, 4, 5, CUTE_PAL.eye);
+  px(sx + 20, sy + 11 + by, 2, 2, CUTE_PAL.eyeHi);
+  px(sx + 20, sy + 14 + by, 1, 1, CUTE_PAL.eyeHi);
+  // Rage override — red pupils
+  if (player.inRage) {
+    px(sx + 11, sy + 13 + by, 1, 1, '#ff4444');
+    px(sx + 21, sy + 13 + by, 1, 1, '#ff4444');
+  }
+
+  // === MOUTH (little smile) ===
+  px(sx + 14, sy + 18 + by, 4, 1, CUTE_PAL.mouth);
+  px(sx + 13, sy + 17 + by, 1, 1, CUTE_PAL.mouth);
+  px(sx + 18, sy + 17 + by, 1, 1, CUTE_PAL.mouth);
+
+  // === CHEEK BLUSH ===
+  ctx.fillStyle = CUTE_PAL.blush;
+  ctx.fillRect(sx + 5, sy + 16 + by, 3, 2);
+  ctx.fillRect(sx + 24, sy + 16 + by, 3, 2);
+
+  // === CLASS HAT / HELMET ===
+  drawCuteHat(sx, sy + by, cls, cc);
+
+  // === ACCESSORY GLOW ===
+  const accVis = (player.equipped && player.equipped.accessory && player.equipped.accessory.vis) || null;
+  if (accVis) {
+    const ag = Math.sin(game.time * 0.15) * 2;
+    ctx.fillStyle = accVis.glow + '88';
+    ctx.fillRect(f > 0 ? sx + 26 : sx + 2, sy + 32 + by, 3, 3);
+    ctx.fillStyle = accVis.glow + 'aa';
+    ctx.beginPath(); ctx.arc(cx, sy + 28 + by, 1.5 + ag * 0.3, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawCuteWeapon(sx, sy, cls, f, cc) {
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x|0, y|0, w, h); };
+  const wx = f > 0 ? sx + 28 : sx - 3;
+  if (cls === 'mage') {
+    // Staff with glowing crystal (like reference wizard)
+    px(wx + 1, sy + 16, 2, 26, '#8a5a2a');
+    px(wx + 1, sy + 16, 1, 26, '#aa7a4a');
+    px(wx + 2, sy + 16, 1, 26, '#5a3a1a');
+    // Crystal outline
+    px(wx - 1, sy + 12, 5, 6, CUTE_PAL.outline);
+    // Crystal inner
+    px(wx, sy + 13, 3, 4, '#7fc8ff');
+    px(wx, sy + 13, 1, 4, '#aaddff');
+    px(wx + 1, sy + 13, 1, 1, '#ffffff');
+    px(wx + 2, sy + 15, 1, 1, '#4a88cc');
+    // Sparkles
+    if ((game.time >> 4) % 3 === 0) {
+      px(wx + 4, sy + 11, 1, 1, '#ffffff');
+      px(wx + 5, sy + 10, 1, 1, '#aaddff');
+      px(wx - 2, sy + 16, 1, 1, '#ffffff');
+    }
+  } else if (cls === 'warrior') {
+    // Simple sword resting at side
+    px(wx + 1, sy + 12, 2, 20, CUTE_PAL.metal);
+    px(wx + 1, sy + 12, 1, 20, CUTE_PAL.metalHi);
+    px(wx + 2, sy + 12, 1, 20, CUTE_PAL.metalShd);
+    // Tip
+    px(wx + 1, sy + 10, 2, 2, CUTE_PAL.metal);
+    px(wx + 1, sy + 10, 1, 2, CUTE_PAL.metalHi);
+    // Crossguard
+    px(wx - 1, sy + 32, 6, 2, CUTE_PAL.gold);
+    px(wx - 1, sy + 32, 6, 1, CUTE_PAL.goldHi);
+    // Grip
+    px(wx + 1, sy + 34, 2, 4, CUTE_PAL.belt);
+  } else if (cls === 'rogue') {
+    // Small dagger
+    px(wx + 1, sy + 26, 2, 8, CUTE_PAL.metal);
+    px(wx + 1, sy + 26, 1, 8, CUTE_PAL.metalHi);
+    px(wx + 1, sy + 24, 2, 2, CUTE_PAL.metal);
+    px(wx - 1, sy + 34, 5, 1, CUTE_PAL.gold);
+    px(wx + 1, sy + 35, 2, 3, CUTE_PAL.belt);
+  } else if (cls === 'archer') {
+    // Simple bow
+    px(wx, sy + 14, 3, 2, CUTE_PAL.belt);
+    px(wx + 1, sy + 16, 2, 20, CUTE_PAL.belt);
+    px(wx + 1, sy + 16, 1, 20, '#a0683a');
+    px(wx, sy + 36, 3, 2, CUTE_PAL.belt);
+    // Bowstring
+    ctx.fillStyle = '#d8d8d0';
+    ctx.fillRect(wx, sy + 16, 1, 20);
+  }
+}
+
+function drawCuteHat(sx, sy, cls, cc) {
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x|0, y|0, w, h); };
+  if (cls === 'mage') {
+    // Wizard hat like reference — brim + drooping cone + gold band + star
+    // Brim
+    px(sx, sy, 32, 4, CUTE_PAL.outline);
+    px(sx + 1, sy, 30, 3, cc.body);
+    px(sx + 1, sy, 30, 1, cc.body2);
+    px(sx + 1, sy + 2, 30, 1, cc.bodyShd);
+    // Cone (rising up, slight flop)
+    px(sx + 8, sy - 4, 16, 4, CUTE_PAL.outline);
+    px(sx + 9, sy - 4, 14, 4, cc.body);
+    px(sx + 9, sy - 4, 14, 1, cc.body2);
+    px(sx + 11, sy - 9, 12, 5, CUTE_PAL.outline);
+    px(sx + 12, sy - 9, 10, 5, cc.body);
+    px(sx + 12, sy - 9, 10, 1, cc.body2);
+    px(sx + 14, sy - 14, 10, 5, CUTE_PAL.outline);
+    px(sx + 15, sy - 14, 8, 5, cc.body);
+    px(sx + 15, sy - 14, 8, 1, cc.body2);
+    px(sx + 18, sy - 18, 6, 4, CUTE_PAL.outline);
+    px(sx + 19, sy - 18, 4, 4, cc.body);
+    // Drooping tip curving forward
+    px(sx + 20, sy - 20, 4, 2, cc.body);
+    px(sx + 22, sy - 21, 2, 1, cc.body2);
+    // Gold band under brim top
+    px(sx + 2, sy + 1, 28, 1, CUTE_PAL.gold);
+    px(sx + 2, sy + 2, 28, 1, CUTE_PAL.goldHi);
+    // Gold star on hat side (like reference)
+    px(sx + 20, sy - 4, 2, 2, CUTE_PAL.gold);
+    px(sx + 19, sy - 3, 4, 1, CUTE_PAL.gold);
+    px(sx + 20, sy - 2, 2, 1, CUTE_PAL.goldHi);
+    px(sx + 20, sy - 6, 1, 2, CUTE_PAL.goldHi);
+    px(sx + 18, sy - 5, 1, 1, CUTE_PAL.gold);
+    px(sx + 23, sy - 5, 1, 1, CUTE_PAL.gold);
+    // Twinkle next to star
+    if ((game.time >> 4) % 3 === 0) {
+      px(sx + 25, sy - 6, 1, 1, '#ffffff');
+      px(sx + 17, sy - 7, 1, 1, '#aaddff');
+    }
+  } else if (cls === 'warrior') {
+    // Crested metal helmet
+    px(sx + 2, sy - 1, 28, 6, CUTE_PAL.outline);
+    px(sx + 3, sy, 26, 5, CUTE_PAL.metal);
+    px(sx + 3, sy, 26, 1, CUTE_PAL.metalHi);
+    px(sx + 3, sy + 4, 26, 1, CUTE_PAL.metalShd);
+    // Horn/side plates
+    px(sx + 1, sy + 1, 2, 3, CUTE_PAL.gold);
+    px(sx + 29, sy + 1, 2, 3, CUTE_PAL.gold);
+    // Red plume
+    px(sx + 15, sy - 6, 2, 6, '#d94f4f');
+    px(sx + 15, sy - 6, 1, 6, '#ff7a7a');
+    px(sx + 14, sy - 4, 4, 1, '#d94f4f');
+    px(sx + 13, sy - 3, 1, 1, '#d94f4f');
+    px(sx + 18, sy - 3, 1, 1, '#d94f4f');
+  } else if (cls === 'rogue') {
+    // Ninja bandana headband
+    px(sx + 2, sy + 7, 28, 4, CUTE_PAL.outline);
+    px(sx + 3, sy + 8, 26, 3, cc.body);
+    px(sx + 3, sy + 8, 26, 1, cc.body2);
+    // Bandana tails flowing back
+    px(sx + 2, sy + 9, 2, 6, cc.body);
+    px(sx + 1, sy + 12, 2, 5, cc.bodyShd);
+    // Forehead gem
+    px(sx + 15, sy + 9, 2, 2, CUTE_PAL.gold);
+    px(sx + 15, sy + 9, 1, 1, CUTE_PAL.goldHi);
+  } else if (cls === 'archer') {
+    // Feathered cap
+    px(sx + 2, sy - 1, 28, 6, CUTE_PAL.outline);
+    px(sx + 3, sy, 26, 5, cc.body);
+    px(sx + 3, sy, 26, 1, cc.body2);
+    px(sx + 3, sy + 4, 26, 1, cc.bodyShd);
+    // Cap band
+    px(sx + 3, sy + 3, 26, 1, CUTE_PAL.belt);
+    // Feather (side)
+    px(sx + 26, sy - 6, 3, 6, CUTE_PAL.gold);
+    px(sx + 27, sy - 6, 1, 6, CUTE_PAL.goldHi);
+    px(sx + 28, sy - 4, 1, 3, CUTE_PAL.gold);
+    px(sx + 28, sy - 8, 1, 2, CUTE_PAL.goldHi);
+  }
 }
 
 // Paints extra chibi details on top of whatever renderer drew the face
