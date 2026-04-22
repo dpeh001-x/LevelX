@@ -861,7 +861,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.9.6';
+const GAME_VERSION = 'v0.9.7';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -8152,8 +8152,14 @@ function showToast(txt, rarity) {
 // CAMERA
 // =========================================================================
 function updateCamera() {
-  const targetX = player.x + player.w/2 - W/2;
-  game.camera.x += (targetX - game.camera.x) * 0.1;
+  // Smooth follow with look-ahead based on player velocity — camera leads the
+  // direction the player is moving for a more fluid feel
+  const lookAhead = Math.max(-80, Math.min(80, player.vx * 12));
+  const targetX = player.x + player.w/2 - W/2 + lookAhead;
+  // Critically-damped lerp factor (higher when target is far, softer when close)
+  const dx = targetX - game.camera.x;
+  const ease = 0.08 + Math.min(0.08, Math.abs(dx) / 600);
+  game.camera.x += dx * ease;
   game.camera.x = Math.max(0, Math.min(game.mapData.worldWidth - W, game.camera.x));
 }
 
@@ -10042,33 +10048,30 @@ function drawCuteCharacter(sx, sy) {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x|0, y|0, w, h); };
 
   // === SWING STATE ===
-  // Whole-body lean while swinging. swingProg animates a sin arch 0→1→0.
+  // Smooth ease-out arc: fast wind-up, soft follow-through
   const isAtk = player.attacking && player.attackTimer > 0;
+  const swingT = isAtk ? Math.min(1, (320 - player.attackTimer) / 320) : 0;
+  // Ease the sine arch for a crisper snap at the peak
   const swingBase = isAtk
-    ? Math.sin(Math.min(1, (320 - player.attackTimer) / 320) * Math.PI)
+    ? Math.sin(Math.pow(swingT, 0.7) * Math.PI)
     : 0;
-  const swingAng = f * swingBase * 0.35;  // radians of body lean toward swing
+  const swingAng = f * swingBase * 0.35;
 
-  // === BODY BOB ===
-  // Subtle torso bob, slower than head
-  const bodyBob = player.state === 'idle'
-    ? Math.floor(Math.sin(game.time * 0.05) * 1)
-    : player.state === 'walk'
-      ? Math.floor(Math.sin(game.time * 0.3) * 0.6)
-      : 0;
-  // === HEAD BOBBLE ===
-  // Big expressive bounce — bigger than body; always on
-  const headBob = player.state === 'idle'
-    ? Math.round(Math.sin(game.time * 0.065) * 2.5)
-    : player.state === 'walk'
-      ? Math.round(Math.sin(game.time * 0.3 + 0.4) * 2)
-      : Math.round(Math.sin(game.time * 0.1) * 1.2);
-  // Small horizontal head tilt during walk to amplify the bobble feel
-  const headTilt = player.state === 'walk'
-    ? Math.sin(game.time * 0.3) * 0.08
-    : Math.sin(game.time * 0.05) * 0.04;
-  const bb = bodyBob;   // body y-offset
-  const hb = headBob;   // head y-offset
+  // === BODY BOB (smooth, continuous — no floor/round truncation) ===
+  const speedN = Math.min(1, Math.abs(player.vx) / 5);   // 0..1 movement factor
+  const idleT = game.time * 0.05;
+  const walkT = game.time * 0.3;
+  // Body: idle breathing + walk-cycle impact
+  const bodyBob = Math.sin(idleT) * 0.8 * (1 - speedN)
+                + Math.sin(walkT) * 1.4 * speedN;
+  // Head: bigger amplitude + phase-shifted so it lags the body for a bobblehead feel
+  const headBob = Math.sin(idleT + 0.4) * 2.3 * (1 - speedN)
+                + Math.sin(walkT + 0.6) * 2.6 * speedN;
+  // Subtle side tilt that grows with walk speed
+  const headTilt = Math.sin(walkT) * 0.10 * speedN
+                 + Math.sin(idleT * 0.8) * 0.04 * (1 - speedN);
+  const bb = bodyBob;
+  const hb = headBob;
 
   // Ground shadow (stays at feet regardless of swing)
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
