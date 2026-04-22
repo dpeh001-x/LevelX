@@ -831,7 +831,7 @@
 // CANVAS / CORE
 // =========================================================================
 // Bump this on every release — displays at top-right of the game
-const GAME_VERSION = 'v0.8.2';
+const GAME_VERSION = 'v0.8.3';
 document.getElementById('version-tag').textContent = GAME_VERSION;
 
 const canvas = document.getElementById('game');
@@ -3608,6 +3608,9 @@ function gravMul() { return (game.mapData && game.mapData.gravityMul) || 1; }
 // SKILL FX SPRITE SHEETS (optional — drop PNGs into /skills to activate)
 // Each sheet is a green-chroma-key grid: rows = skill, columns = frames.
 // =========================================================================
+// Only the archer sheet is active right now — warrior/mage/thief sheets are
+// disabled pending cleaner versions. Add them back to this catalog when ready;
+// any class missing from here falls back to procedural FX (no crashes).
 const FX_CATALOG = {
   archer: {
     path: 'skills/archer_fx.png',
@@ -3617,36 +3620,6 @@ const FX_CATALOG = {
       { key:'multiShot',   frames: 8 },
       { key:'explosive',   frames: 8 },
       { key:'phoenix',     frames: 8 },
-    ],
-  },
-  mage: {
-    path: 'skills/mage_fx.png',
-    rows: [
-      { key:'fireball',    frames: 8 },
-      { key:'iceSpike',    frames: 8 },
-      { key:'arcaneBurst', frames: 8 },
-      { key:'lightning',   frames: 8 },
-      { key:'manaShield',  frames: 8 },
-    ],
-  },
-  thief: {
-    path: 'skills/thief_fx.png',
-    rows: [
-      { key:'throwingStar', frames: 10 },
-      { key:'daggerSlash',  frames: 10 },
-      { key:'shadowMove',   frames: 10 },
-      { key:'venom',        frames: 10 },
-      { key:'smokeScreen',  frames: 10 },
-    ],
-  },
-  warrior: {
-    path: 'skills/warrior_fx.png',
-    rows: [
-      { key:'powerSlash',   frames: 8 },
-      { key:'auraBurst',    frames: 8 },
-      { key:'earthbreaker', frames: 8 },
-      { key:'shieldBash',   frames: 8 },
-      { key:'swordStorm',   frames: 8 },
     ],
   },
 };
