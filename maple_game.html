@@ -11936,64 +11936,61 @@ function drawSnail(m, sx, sy) {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.02) * 1);
-  // Body (slug)
-  const bcx = sx + m.w/2, bby = sy + m.h - 5 + bob;
-  // Slime trail
-  ctx.fillStyle = 'rgba(180,220,140,0.4)';
-  ctx.fillRect(sx - (f > 0 ? 6 : -m.w), sy + m.h - 2, 6, 2);
-  // Body outline
-  px(sx + 2, bby - 6, m.w - 4, 1, '#3a5020');
-  px(sx + 2, bby - 5, 1, 6, '#3a5020');
-  px(sx + m.w - 3, bby - 5, 1, 6, '#3a5020');
-  px(sx + 2, bby, m.w - 4, 1, '#3a5020');
-  // Body base
-  px(sx + 3, bby - 5, m.w - 6, 5, '#8fbc5f');
-  // Highlight
-  px(sx + 3, bby - 5, m.w - 6, 1, '#b0d880');
-  // Belly shadow
-  px(sx + 3, bby - 1, m.w - 6, 1, '#6a8f40');
+  const cx = sx + m.w/2, bby = sy + m.h - 5 + bob;
 
-  // Shell (spiral)
-  const scx = bcx + (f > 0 ? -3 : 3);
-  const scy = sy + 7 + bob;
-  // Outline
-  px(scx - 10, scy - 8, 20, 1, '#2a1a4a');
-  px(scx - 10, scy + 7, 20, 1, '#2a1a4a');
-  px(scx - 11, scy - 7, 1, 14, '#2a1a4a');
-  px(scx + 10, scy - 7, 1, 14, '#2a1a4a');
-  // Shell body (purple)
-  ctx.fillStyle = '#6a4fbd';
+  // Slime trail
+  ctx.fillStyle = 'rgba(180,220,140,0.35)';
+  ctx.fillRect(sx - (f > 0 ? 6 : -m.w), sy + m.h - 3, 6, 2);
+
+  // === SHELL (2-shade cel) ===
+  const scx = cx + (f > 0 ? -3 : 3), scy = sy + 7 + bob;
+  ctx.fillStyle = '#1a0a38';
+  ctx.beginPath(); ctx.arc(scx, scy, 11.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8860df';
   ctx.beginPath(); ctx.arc(scx, scy, 10, 0, Math.PI * 2); ctx.fill();
-  // Highlight
-  ctx.fillStyle = '#8a6fed';
-  ctx.beginPath(); ctx.arc(scx - 3, scy - 3, 6, 0, Math.PI * 2); ctx.fill();
-  // Bottom shadow
-  ctx.fillStyle = '#4a2f8a';
-  ctx.beginPath(); ctx.arc(scx + 2, scy + 3, 6, 0, Math.PI * 2); ctx.fill();
+  // Shadow (shade 2) — lower-right blob
+  ctx.fillStyle = '#5030a8';
+  ctx.beginPath(); ctx.ellipse(scx + 2, scy + 3.5, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // Highlight — upper-left
+  ctx.fillStyle = '#c8aaff';
+  ctx.beginPath(); ctx.ellipse(scx - 3, scy - 4, 4.5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
   // Spiral rings
-  ctx.strokeStyle = '#2a1a4a'; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#1a0a38'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(scx, scy, 7, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.arc(scx - 1, scy - 1, 4, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(scx - 2, scy - 2, 2, 0, Math.PI * 2); ctx.stroke();
-  // Shell sheen
-  px(scx - 5, scy - 6, 2, 1, '#ccaaff');
-
-  // Eye stalks
-  const eyeX = bcx + f * 7;
-  const stalkY = sy + 12;
-  ctx.strokeStyle = '#3a5020'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(eyeX, stalkY);
-  ctx.lineTo(eyeX + f * 2, stalkY - 3);
-  ctx.lineTo(eyeX + f * 3, sy + 6);
-  ctx.stroke();
-  // Eyeball
+  ctx.beginPath(); ctx.arc(scx - 1, scy - 1, 2, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(eyeX + f * 3, sy + 6, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1a0410';
-  ctx.beginPath(); ctx.arc(eyeX + f * 3.5, sy + 6, 1.3, 0, Math.PI * 2); ctx.fill();
-  // Tiny mouth
-  px(bcx + f * 4, bby - 2, 2, 1, '#4a2810');
+  ctx.beginPath(); ctx.arc(scx - 5.5, scy - 5.5, 1.5, 0, Math.PI * 2); ctx.fill();
+
+  // === BODY (2-shade cel) ===
+  ctx.fillStyle = '#2a3f10';
+  ctx.beginPath(); ctx.ellipse(cx, bby - 2, m.w/2 - 1, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8fbc5f';
+  ctx.beginPath(); ctx.ellipse(cx, bby - 3, m.w/2 - 2, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5f8a38';
+  ctx.beginPath(); ctx.ellipse(cx + 1, bby - 1, m.w/2 - 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c8e878';
+  ctx.beginPath(); ctx.ellipse(cx - 4, bby - 5, m.w/4, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // === EYE STALK ===
+  const eyeX = cx + f * 7;
+  ctx.strokeStyle = '#2a3f10'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(eyeX, sy + 14 + bob); ctx.lineTo(eyeX + f * 2, sy + 10 + bob); ctx.lineTo(eyeX + f * 3, sy + 5 + bob);
+  ctx.stroke();
+  const ex = eyeX + f * 3, ey = sy + 5 + bob;
+  ctx.fillStyle = '#0a0420';
+  ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(ex, ey, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a0830';
+  ctx.beginPath(); ctx.arc(ex + f * 0.5, ey + 0.5, 2, 0, Math.PI * 2); ctx.fill();
+  px((ex - 1) | 0, (ey - 2) | 0, 1, 1, '#ffffff');
+  px((ex + 1) | 0, (ey - 1) | 0, 1, 1, '#ffffff');
+
+  // Blush
+  ctx.fillStyle = 'rgba(230,160,120,0.4)';
+  ctx.beginPath(); ctx.ellipse(cx + f * 3, bby - 2, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawSlime(m, sx, sy) {
@@ -12002,59 +11999,55 @@ function drawSlime(m, sx, sy) {
   const squish = Math.cos(m.animTimer * 0.02) * 1.5;
   const cx = sx + m.w/2, cy = sy + m.h - 10 + bounce;
   const f = m.facing;
-  // Drip below
+  const rX = m.w/2 + squish, rY = m.h/2 - bounce - squish;
+
+  // Drip
   if ((m.animTimer | 0) % 60 < 30) {
     px(cx - 1, sy + m.h - 4, 2, 2, '#ff4499');
-    px(cx - 1, sy + m.h - 6, 2, 2, '#ff4499');
+    px(cx - 1, sy + m.h - 6, 2, 2, '#ff88bb');
   }
+
+  // === BODY (2-shade cel) ===
   // Outline
-  ctx.strokeStyle = '#b02266'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, m.w/2 + squish, m.h/2 - bounce - squish, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  // Base body
+  ctx.strokeStyle = '#882255'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.stroke();
+  // Base (shade 1)
   ctx.fillStyle = m.color;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, m.w/2 + squish, m.h/2 - bounce - squish, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Shadow bottom
-  ctx.fillStyle = '#c44480';
-  ctx.beginPath();
-  ctx.ellipse(cx + 2, cy + 4, m.w/2 - 2, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Top highlight
-  ctx.fillStyle = '#ffcce4';
-  ctx.beginPath();
-  ctx.ellipse(cx - 3, cy - m.h/4, 7, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.fill();
+  // Shadow (shade 2) — lower blob, hard edge
+  ctx.fillStyle = '#d04488';
+  ctx.beginPath(); ctx.ellipse(cx + 2, cy + rY * 0.35, rX - 3, rY * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+  // Highlight — upper-left dome
+  ctx.fillStyle = '#ffddee';
+  ctx.beginPath(); ctx.ellipse(cx - rX * 0.3, cy - rY * 0.35, rX * 0.42, rY * 0.28, 0, 0, Math.PI * 2); ctx.fill();
   // Shiny spot
   ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(cx - 5, cy - m.h/4 - 1, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - rX * 0.45, cy - rY * 0.44, 2, 0, Math.PI * 2); ctx.fill();
+  // Redraw outline crisp on top
+  ctx.strokeStyle = '#882255'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.stroke();
 
-  // Eyes
-  const eyeY = cy - 4;
-  // Whites
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(cx - 6 + f, eyeY, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 6 + f, eyeY, 3.5, 0, Math.PI * 2); ctx.fill();
-  // Eye outline
-  ctx.strokeStyle = '#2a0818'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(cx - 6 + f, eyeY, 3.5, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx + 6 + f, eyeY, 3.5, 0, Math.PI * 2); ctx.stroke();
-  // Pupils
-  ctx.fillStyle = '#1a0410';
-  ctx.beginPath(); ctx.arc(cx - 5 + f * 1.8, eyeY, 1.8, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 7 + f * 1.8, eyeY, 1.8, 0, Math.PI * 2); ctx.fill();
-  // Eye shine
-  ctx.fillStyle = '#ffffff';
-  px(cx - 5 + f * 1.8, eyeY - 1, 1, 1, '#ffffff');
-  px(cx + 7 + f * 1.8, eyeY - 1, 1, 1, '#ffffff');
-  // Mouth (smiley)
-  ctx.strokeStyle = '#2a0818'; ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(cx, eyeY + 4, 3, 0.1, Math.PI - 0.1);
-  ctx.stroke();
+  // === CUTE EYES ===
+  const eyeY = cy - 5;
+  [-7, 7].forEach((dx) => {
+    ctx.fillStyle = '#2a0818';
+    ctx.beginPath(); ctx.arc(cx + dx + f, eyeY + 0.5, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx + dx + f, eyeY, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a0410';
+    ctx.beginPath(); ctx.arc(cx + dx + f * 1.5, eyeY + 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+    px((cx + dx + f - 2) | 0, (eyeY - 2) | 0, 2, 2, '#ffffff');
+    px((cx + dx + f + 1) | 0, (eyeY + 1) | 0, 1, 1, '#ffffff');
+  });
+
+  // Blush marks
+  ctx.fillStyle = 'rgba(255,130,160,0.4)';
+  ctx.beginPath(); ctx.ellipse(cx - 13, eyeY + 6, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 13, eyeY + 6, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Wide happy smile
+  ctx.strokeStyle = '#882255'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, eyeY + 6, 4, 0.1, Math.PI - 0.1); ctx.stroke();
 }
 
 function drawMushroom(m, sx, sy) {
@@ -12064,77 +12057,73 @@ function drawMushroom(m, sx, sy) {
   const cx = sx + m.w/2;
   const isOrange = m.type === 'orange';
   const capBase = m.shell;
-  const capHL = isOrange ? '#ffcc88' : '#ff6a6a';
-  const capShad = isOrange ? '#cc4400' : '#881919';
+  const capShad = isOrange ? '#bb5500' : '#882020';
+  const capHL   = isOrange ? '#ffcc88' : '#ff7766';
+  const stemShad = isOrange ? '#cc9940' : '#c0aa88';
 
-  // Stem shadow
-  px(sx + 7, sy + 18 + bob, m.w - 14, m.h - 18, '#2a1a08');
-  // Stem body
-  px(sx + 8, sy + 18 + bob, m.w - 16, m.h - 18, m.color);
-  // Stem highlight
-  px(sx + 8, sy + 18 + bob, 2, m.h - 22, '#f5e8c8');
-  px(sx + m.w - 10, sy + 18 + bob, 2, m.h - 22, '#c8b48a');
-  // Stem rings
-  px(sx + 9, sy + 22 + bob, m.w - 18, 1, '#c8b48a');
+  // === STEM (2-shade cel) ===
+  const stemY = sy + 20 + bob;
+  px(sx + 8, stemY - 1, m.w - 16, m.h - 19, '#2a1a08');
+  px(sx + 9, stemY, m.w - 18, m.h - 22, m.color);
+  px(sx + 9 + Math.floor((m.w - 18) * 0.65), stemY, Math.floor((m.w - 18) * 0.35), m.h - 22, stemShad);
+  px(sx + 9, stemY, 3, m.h - 24, '#f8f0d8');
 
-  // Cap shadow (outline)
+  // === CAP (2-shade cel half-ellipse) ===
   ctx.fillStyle = capShad;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 20 + bob, m.w/2 + 1, 20, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap base
+  ctx.beginPath(); ctx.ellipse(cx, stemY + 1, m.w/2 + 1, 21, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = capBase;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 19 + bob, m.w/2, 18, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap highlight band (top)
+  ctx.beginPath(); ctx.ellipse(cx, stemY, m.w/2, 20, 0, Math.PI, 0); ctx.fill();
+  // Shadow band — lower 40%
+  ctx.fillStyle = capShad;
+  ctx.beginPath(); ctx.ellipse(cx, stemY, m.w/2, 9, 0, Math.PI, 0); ctx.fill();
+  // Highlight dome — upper
   ctx.fillStyle = capHL;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 8 + bob, m.w/2 - 4, 5, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap bottom darker edge
-  px(sx + 6, sy + 18 + bob, m.w - 12, 2, capShad);
-  // Cap gills (underside)
-  px(sx + 9, sy + 20 + bob, m.w - 18, 1, '#2a1a08');
-  for (let i = 0; i < 4; i++) {
-    px(sx + 10 + i * 4, sy + 18 + bob, 1, 3, '#2a1a08');
-  }
+  ctx.beginPath(); ctx.ellipse(cx - 2, sy + 7 + bob, m.w/2 - 6, 6, 0, Math.PI, 0); ctx.fill();
+  // Gills
+  px(sx + 9, stemY, m.w - 18, 1, '#2a1a08');
+  for (let i = 0; i < 4; i++) px(sx + 10 + i * 4, stemY, 1, 2, '#2a1a08');
 
-  // Spots with shadow side
-  const spots = [[-9, 4], [8, 7], [-2, -1], [11, -1], [-13, 10]];
+  // Spots (2-shade)
+  const spots = [[-9, 4], [8, 7], [-2, -1], [11, -1]];
   for (const [dx, dy] of spots) {
-    if (sx + m.w/2 + dx < sx + 2 || sx + m.w/2 + dx > sx + m.w - 2) continue;
-    px(cx + dx - 1, sy + 8 + dy + bob, 3, 3, '#ffffff');
-    px(cx + dx - 1, sy + 10 + dy + bob, 3, 1, '#dddddd');
-    px(cx + dx, sy + 8 + dy + bob, 1, 1, '#ffffff');
+    if (cx + dx < sx + 2 || cx + dx > sx + m.w - 4) continue;
+    ctx.fillStyle = '#dddddd';
+    ctx.beginPath(); ctx.arc(cx + dx + 1, sy + 8 + dy + bob + 1, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx + dx, sy + 8 + dy + bob, 3, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Eyes (whites + pupil)
-  const eyeY = sy + 24 + bob;
-  px(cx - 8, eyeY - 1, 5, 5, '#ffffff');
-  px(cx + 3, eyeY - 1, 5, 5, '#ffffff');
-  px(cx - 8, eyeY - 1, 5, 1, '#2a1a08');
-  px(cx + 3, eyeY - 1, 5, 1, '#2a1a08');
-  px(cx - 7 + f * 2, eyeY, 2, 3, '#1a0810');
-  px(cx + 4 + f * 2, eyeY, 2, 3, '#1a0810');
-  px(cx - 7 + f * 2, eyeY, 1, 1, '#ffffff');
-  px(cx + 4 + f * 2, eyeY, 1, 1, '#ffffff');
+  // === CUTE EYES ===
+  const eyeY = sy + 25 + bob;
+  [-8, 3].forEach((dx) => {
+    const ex = cx + dx + 2 + f;
+    ctx.fillStyle = '#1a0808';
+    ctx.beginPath(); ctx.arc(ex, eyeY + 1.5, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(ex, eyeY + 1, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a0808';
+    ctx.beginPath(); ctx.arc(ex + f, eyeY + 1.5, 2, 0, Math.PI * 2); ctx.fill();
+    px((ex - 1) | 0, (eyeY - 1) | 0, 2, 2, '#ffffff');
+    px((ex + 1) | 0, (eyeY + 1) | 0, 1, 1, '#ffffff');
+  });
 
-  // Mouth (smiley for happy mushroom)
-  ctx.strokeStyle = '#4a2a1a'; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.arc(cx, sy + 32 + bob, 3, 0.2, Math.PI - 0.2);
-  ctx.stroke();
-  // Tongue
-  px(cx - 1, sy + 33 + bob, 2, 1, '#cc4466');
+  // Blush marks
+  ctx.fillStyle = 'rgba(255,140,120,0.4)';
+  ctx.beginPath(); ctx.ellipse(cx - 14, eyeY + 4, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 13, eyeY + 4, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Feet
-  px(sx + 5, sy + m.h - 5, 9, 1, '#2a1a08');
-  px(sx + 6, sy + m.h - 4, 8, 4, '#6a4a2a');
-  px(sx + 6, sy + m.h - 4, 8, 1, '#8a6a3a');
-  px(sx + m.w - 14, sy + m.h - 5, 9, 1, '#2a1a08');
-  px(sx + m.w - 13, sy + m.h - 4, 8, 4, '#6a4a2a');
-  px(sx + m.w - 13, sy + m.h - 4, 8, 1, '#8a6a3a');
+  // Smile + tongue
+  ctx.strokeStyle = '#4a2a1a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, eyeY + 8, 3.5, 0.2, Math.PI - 0.2); ctx.stroke();
+  px(cx - 1 | 0, eyeY + 9, 2, 1, '#cc4466');
+
+  // Feet (2-shade)
+  [sx + 5, sx + m.w - 14].forEach((fx) => {
+    px(fx, sy + m.h - 6, 9, 1, '#2a1a08');
+    px(fx + 1, sy + m.h - 5, 8, 5, '#6a4a2a');
+    px(fx + 1, sy + m.h - 5, 8, 1, '#8a6a3a');
+    px(fx + 1, sy + m.h - 5, 3, 5, '#9a7a50');
+  });
 }
 
 function drawHorny(m, sx, sy) {
@@ -12142,200 +12131,156 @@ function drawHorny(m, sx, sy) {
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.018) * 1);
   const cx = sx + m.w/2;
-  // Stem with dark bruising
-  px(sx + 7, sy + 22 + bob, m.w - 14, m.h - 22, '#2a1408');
-  px(sx + 8, sy + 22 + bob, m.w - 16, m.h - 22, m.color);
-  px(sx + 8, sy + 22 + bob, 2, m.h - 24, '#e8d0a0');
-  px(sx + m.w - 10, sy + 22 + bob, 2, m.h - 24, '#aa8858');
-  // Vein streaks on stem
-  px(sx + m.w/2 - 4, sy + 26 + bob, 1, m.h - 30, '#6a3884');
-  px(sx + m.w/2 + 3, sy + 28 + bob, 1, m.h - 32, '#6a3884');
 
-  // Cap — dark purple shadow outline
-  ctx.fillStyle = '#3a1a5a';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 24 + bob, m.w/2 + 1, 22, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap base
+  // === STEM (2-shade cel) ===
+  px(sx + 8, sy + 24 + bob - 1, m.w - 16, m.h - 23, '#1a0a08');
+  px(sx + 9, sy + 24 + bob, m.w - 18, m.h - 24, m.color);
+  px(sx + 9 + Math.floor((m.w - 18) * 0.7), sy + 24 + bob, Math.floor((m.w - 18) * 0.3), m.h - 24, '#aa8850');
+  px(sx + 9, sy + 24 + bob, 3, m.h - 26, '#f0d8b0');
+  px(cx - 3 | 0, sy + 28 + bob, 1, m.h - 32, '#7a40a0');
+
+  // === CAP (2-shade cel half-ellipse) ===
+  ctx.fillStyle = '#2a0a4a';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 25 + bob, m.w/2 + 1, 24, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = m.shell;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 23 + bob, m.w/2, 20, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap highlight band
-  ctx.fillStyle = '#aa66ff';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 12 + bob, m.w/2 - 4, 5, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap dark edge
-  px(sx + 6, sy + 22 + bob, m.w - 12, 2, '#3a1a5a');
+  ctx.beginPath(); ctx.ellipse(cx, sy + 24 + bob, m.w/2, 22, 0, Math.PI, 0); ctx.fill();
+  // Shadow band — lower 40%
+  ctx.fillStyle = '#5520a8';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 24 + bob, m.w/2, 10, 0, Math.PI, 0); ctx.fill();
+  // Highlight dome
+  ctx.fillStyle = '#bb88ff';
+  ctx.beginPath(); ctx.ellipse(cx - 2, sy + 9 + bob, m.w/2 - 6, 5, 0, Math.PI, 0); ctx.fill();
   // Evil dark spots
-  px(cx - 10, sy + 12 + bob, 3, 2, '#2a0a3a');
-  px(cx + 7, sy + 14 + bob, 3, 2, '#2a0a3a');
-  px(cx - 2, sy + 8 + bob, 2, 2, '#2a0a3a');
+  ctx.fillStyle = '#1a0028';
+  ctx.beginPath(); ctx.arc(cx - 11, sy + 11 + bob, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 9, sy + 14 + bob, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 1, sy + 7 + bob, 2.5, 0, Math.PI * 2); ctx.fill();
+  // Gills
+  px(sx + 9, sy + 24 + bob, m.w - 18, 1, '#2a0a4a');
+  for (let i = 0; i < 4; i++) px(sx + 10 + i * 5, sy + 24 + bob, 1, 2, '#2a0a4a');
 
-  // Horns with gradient (bone color)
-  ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath();
-  ctx.moveTo(cx - 13, sy + 4 + bob);
-  ctx.lineTo(cx - 17, sy - 10 + bob);
-  ctx.lineTo(cx - 7, sy + 6 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#d8c8a0';
-  ctx.beginPath();
-  ctx.moveTo(cx - 12, sy + 4 + bob);
-  ctx.lineTo(cx - 16, sy - 8 + bob);
-  ctx.lineTo(cx - 8, sy + 5 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(cx - 13, sy + 3 + bob);
-  ctx.lineTo(cx - 15, sy - 4 + bob);
-  ctx.lineTo(cx - 12, sy + 2 + bob);
-  ctx.closePath(); ctx.fill();
-  // Right horn
-  ctx.fillStyle = '#3a2a1a';
-  ctx.beginPath();
-  ctx.moveTo(cx + 13, sy + 4 + bob);
-  ctx.lineTo(cx + 17, sy - 10 + bob);
-  ctx.lineTo(cx + 7, sy + 6 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#d8c8a0';
-  ctx.beginPath();
-  ctx.moveTo(cx + 12, sy + 4 + bob);
-  ctx.lineTo(cx + 16, sy - 8 + bob);
-  ctx.lineTo(cx + 8, sy + 5 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(cx + 13, sy + 3 + bob);
-  ctx.lineTo(cx + 15, sy - 4 + bob);
-  ctx.lineTo(cx + 12, sy + 2 + bob);
-  ctx.closePath(); ctx.fill();
+  // === HORNS (2-shade bone) ===
+  [[-1], [1]].map(([dir]) => {
+    const hx = cx + dir * 10;
+    ctx.fillStyle = '#2a1a0a';
+    ctx.beginPath(); ctx.moveTo(hx, sy + 5 + bob); ctx.lineTo(hx + dir * 5, sy - 10 + bob); ctx.lineTo(hx + dir * 8, sy + 7 + bob); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#dac8a0';
+    ctx.beginPath(); ctx.moveTo(hx, sy + 5 + bob); ctx.lineTo(hx + dir * 4, sy - 8 + bob); ctx.lineTo(hx + dir * 7, sy + 6 + bob); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#a89870';
+    ctx.beginPath(); ctx.moveTo(hx + dir * 2, sy + 5 + bob); ctx.lineTo(hx + dir * 4, sy - 8 + bob); ctx.lineTo(hx + dir * 7, sy + 6 + bob); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(hx + dir * 4, sy - 7 + bob, 1.2, 0, Math.PI * 2); ctx.fill();
+  });
 
-  // Angry brow
-  ctx.strokeStyle = '#2a0818'; ctx.lineWidth = 2;
+  // === ANGRY BROW ===
+  ctx.strokeStyle = '#1a0410'; ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(cx - 11, sy + 25 + bob); ctx.lineTo(cx - 4, sy + 27 + bob);
-  ctx.moveTo(cx + 11, sy + 25 + bob); ctx.lineTo(cx + 4, sy + 27 + bob);
+  ctx.moveTo(cx - 13, sy + 26 + bob); ctx.lineTo(cx - 4, sy + 29 + bob);
+  ctx.moveTo(cx + 13, sy + 26 + bob); ctx.lineTo(cx + 4, sy + 29 + bob);
   ctx.stroke();
 
-  // Glowing red eyes with bloom
-  ctx.fillStyle = 'rgba(255,30,60,0.35)';
-  ctx.beginPath(); ctx.arc(cx - 6 + f, sy + 29 + bob, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 7 + f, sy + 29 + bob, 6, 0, Math.PI * 2); ctx.fill();
-  px(cx - 8, sy + 27 + bob, 5, 4, '#2a0818');
-  px(cx + 4, sy + 27 + bob, 5, 4, '#2a0818');
-  px(cx - 7 + f, sy + 28 + bob, 3, 2, '#ff3366');
-  px(cx + 5 + f, sy + 28 + bob, 3, 2, '#ff3366');
-  px(cx - 6 + f, sy + 28 + bob, 1, 1, '#ffffaa');
-  px(cx + 6 + f, sy + 28 + bob, 1, 1, '#ffffaa');
+  // === RED GLOWING EYES (2-shade) ===
+  ctx.fillStyle = 'rgba(255,30,60,0.3)';
+  ctx.beginPath(); ctx.arc(cx - 6 + f, sy + 31 + bob, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6 + f, sy + 31 + bob, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a0410';
+  ctx.beginPath(); ctx.arc(cx - 6 + f, sy + 31 + bob, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6 + f, sy + 31 + bob, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff2244';
+  ctx.beginPath(); ctx.arc(cx - 6 + f, sy + 31 + bob, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6 + f, sy + 31 + bob, 2.5, 0, Math.PI * 2); ctx.fill();
+  px((cx - 7 + f) | 0, (sy + 29 + bob) | 0, 1, 1, '#ffcc44');
+  px((cx + 5 + f) | 0, (sy + 29 + bob) | 0, 1, 1, '#ffcc44');
 
-  // Fangs mouth
-  px(cx - 5, sy + 35 + bob, 10, 2, '#2a0818');
-  px(cx - 4, sy + 33 + bob, 2, 3, '#ffffff');
-  px(cx + 2, sy + 33 + bob, 2, 3, '#ffffff');
-  px(cx - 3, sy + 35 + bob, 1, 1, '#e0e0d0');
-  px(cx + 3, sy + 35 + bob, 1, 1, '#e0e0d0');
+  // === FANG MOUTH ===
+  px(cx - 5 | 0, sy + 37 + bob, 10, 3, '#1a0410');
+  px(cx - 4 | 0, sy + 35 + bob, 2, 4, '#e0ddd0');
+  px(cx + 2 | 0, sy + 35 + bob, 2, 4, '#e0ddd0');
+  px(cx - 3 | 0, sy + 37 + bob, 1, 1, '#c0c0b0');
+  px(cx + 3 | 0, sy + 37 + bob, 1, 1, '#c0c0b0');
 
-  // Feet (clawed)
-  px(sx + 4, sy + m.h - 5, 10, 1, '#1a0410');
-  px(sx + 5, sy + m.h - 4, 9, 4, '#4a2a4a');
-  px(sx + 5, sy + m.h - 4, 9, 1, '#6a4a6a');
-  px(sx + 6, sy + m.h - 1, 1, 2, '#e0e0d0');
-  px(sx + 9, sy + m.h - 1, 1, 2, '#e0e0d0');
-  px(sx + 12, sy + m.h - 1, 1, 2, '#e0e0d0');
-  px(sx + m.w - 14, sy + m.h - 5, 10, 1, '#1a0410');
-  px(sx + m.w - 13, sy + m.h - 4, 9, 4, '#4a2a4a');
-  px(sx + m.w - 13, sy + m.h - 4, 9, 1, '#6a4a6a');
-  px(sx + m.w - 12, sy + m.h - 1, 1, 2, '#e0e0d0');
-  px(sx + m.w - 9, sy + m.h - 1, 1, 2, '#e0e0d0');
-  px(sx + m.w - 6, sy + m.h - 1, 1, 2, '#e0e0d0');
+  // === CLAWED FEET (2-shade) ===
+  [sx + 5, sx + m.w - 14].forEach((fx) => {
+    px(fx, sy + m.h - 6, 9, 1, '#0a0410');
+    px(fx + 1, sy + m.h - 5, 8, 5, '#4a2a4a');
+    px(fx + 1, sy + m.h - 5, 8, 1, '#6a4a6a');
+    px(fx + 1, sy + m.h - 5, 3, 5, '#6a4a7a');
+    px(fx + 1, sy + m.h, 1, 2, '#e0e0c8');
+    px(fx + 4, sy + m.h, 1, 2, '#e0e0c8');
+    px(fx + 7, sy + m.h, 1, 2, '#e0e0c8');
+  });
 }
 
 function drawStump(m, sx, sy) {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
   const f = m.facing;
   const cx = sx + m.w/2;
-  // Body outline
-  px(sx + 3, sy + 10, m.w - 6, 1, '#1a0804');
-  px(sx + 3, sy + 10, 1, m.h - 10, '#1a0804');
-  px(sx + m.w - 4, sy + 10, 1, m.h - 10, '#1a0804');
-  px(sx + 3, sy + m.h - 1, m.w - 6, 1, '#1a0804');
-  // Body base
+
+  // === BARREL BODY (2-shade cel) ===
+  // Outline
+  px(sx + 3, sy + 10, m.w - 6, m.h - 10, '#1a0804');
+  // Base (shade 1)
   px(sx + 4, sy + 10, m.w - 8, m.h - 10, m.color);
-  // Vertical bark shading (lights and darks)
-  px(sx + 4, sy + 10, 3, m.h - 10, '#a06030');
-  px(sx + 7, sy + 10, 2, m.h - 10, '#7a4020');
-  px(sx + m.w - 9, sy + 10, 2, m.h - 10, '#7a4020');
-  px(sx + m.w - 7, sy + 10, 3, m.h - 10, '#5a2810');
-  // Bark grain (vertical lines)
-  for (let i = 0; i < 5; i++) {
-    px(sx + 7 + i * 4 + (i % 2), sy + 14, 1, m.h - 18, '#3a1a0a');
-  }
-  // Knot in bark
+  // Shadow strip right (shade 2)
+  px(sx + 4 + Math.floor((m.w - 8) * 0.62), sy + 10, Math.floor((m.w - 8) * 0.38), m.h - 10, '#5a3820');
+  // Highlight strip left
+  px(sx + 4, sy + 10, 4, m.h - 10, '#a87050');
+  // Bark grain
+  for (let i = 0; i < 5; i++) px(sx + 7 + i * 4 + (i % 2), sy + 14, 1, m.h - 18, '#3a1a0a');
   px(sx + 9, sy + 30, 3, 3, '#2a1408');
   px(sx + 10, sy + 31, 1, 1, '#1a0804');
-  // Moss tufts
+  // Moss
   px(sx + 6, sy + 12, 3, 1, '#5a9a4a');
   px(sx + 7, sy + 11, 2, 1, '#7abb66');
   px(sx + m.w - 10, sy + 14, 3, 1, '#5a9a4a');
 
-  // Top (cut) — ring pattern
+  // === TOP RINGS (2-shade) ===
   ctx.fillStyle = '#1a0804';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 10, m.w/2 - 3, 9, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, sy + 10, m.w/2 - 3, 9, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = m.shell;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 10, m.w/2 - 4, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Ring highlight top
-  ctx.fillStyle = '#8a5a2a';
-  ctx.beginPath();
-  ctx.ellipse(cx - 1, sy + 8, m.w/2 - 5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Concentric growth rings
-  ctx.strokeStyle = '#4a2a1a'; ctx.lineWidth = 1;
-  for (let r = 4; r < m.w/2 - 4; r += 3) {
-    ctx.beginPath();
-    ctx.ellipse(cx, sy + 10, r, Math.max(2, r * 7 / (m.w/2 - 4)), 0, 0, Math.PI * 2);
-    ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx, sy + 10, m.w/2 - 4, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a2010';
+  ctx.beginPath(); ctx.ellipse(cx + 2, sy + 12, m.w/2 - 6, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#9a6838';
+  ctx.beginPath(); ctx.ellipse(cx - 2, sy + 8, m.w/2 - 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#3a1a0a'; ctx.lineWidth = 1;
+  for (let r = 4; r < m.w/2 - 5; r += 3) {
+    ctx.beginPath(); ctx.ellipse(cx, sy + 10, r, Math.max(2, r * 7 / (m.w/2 - 4)), 0, 0, Math.PI * 2); ctx.stroke();
   }
-  // Center darker spot
-  ctx.fillStyle = '#3a1a0a';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 10, 2, 1.5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = '#2a1208';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 10, 2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Angry brows
-  ctx.strokeStyle = '#1a0804'; ctx.lineWidth = 2;
+  // === ANGRY BROWS ===
+  ctx.strokeStyle = '#1a0804'; ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(sx + 8, sy + 18); ctx.lineTo(sx + 19, sy + 22);
-  ctx.moveTo(sx + m.w - 8, sy + 18); ctx.lineTo(sx + m.w - 19, sy + 22);
+  ctx.moveTo(sx + 8, sy + 18); ctx.lineTo(sx + 19, sy + 23);
+  ctx.moveTo(sx + m.w - 8, sy + 18); ctx.lineTo(sx + m.w - 19, sy + 23);
   ctx.stroke();
 
-  // Eyes (white)
-  px(sx + 10, sy + 20, 8, 6, '#1a0804');
-  px(sx + 11, sy + 21, 7, 5, '#ffffff');
-  px(sx + m.w - 18, sy + 20, 8, 6, '#1a0804');
-  px(sx + m.w - 17, sy + 21, 7, 5, '#ffffff');
-  // Bloodshot veins
-  px(sx + 14, sy + 22, 1, 2, '#ff9999');
-  px(sx + m.w - 14, sy + 22, 1, 2, '#ff9999');
-  // Red pupils
-  px(sx + 12 + f * 2, sy + 22, 3, 3, '#cc0000');
-  px(sx + m.w - 16 + f * 2, sy + 22, 3, 3, '#cc0000');
-  px(sx + 13 + f * 2, sy + 22, 1, 1, '#ff5555');
-  px(sx + m.w - 15 + f * 2, sy + 22, 1, 1, '#ff5555');
+  // === ANGRY EYES (2-shade cel) ===
+  px(sx + 10, sy + 21, 8, 7, '#1a0804');
+  px(sx + m.w - 18, sy + 21, 8, 7, '#1a0804');
+  px(sx + 11, sy + 22, 6, 5, '#ffffff');
+  px(sx + m.w - 17, sy + 22, 6, 5, '#ffffff');
+  // Angry slant shadow
+  ctx.fillStyle = '#1a0804';
+  ctx.beginPath(); ctx.moveTo(sx + 11, sy + 22); ctx.lineTo(sx + 17, sy + 22); ctx.lineTo(sx + 17, sy + 24); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(sx + m.w - 17, sy + 22); ctx.lineTo(sx + m.w - 11, sy + 22); ctx.lineTo(sx + m.w - 11, sy + 24); ctx.closePath(); ctx.fill();
+  px(sx + 14, sy + 23, 1, 2, '#ff9999');
+  px(sx + m.w - 14, sy + 23, 1, 2, '#ff9999');
+  // Red pupils (2-shade)
+  ctx.fillStyle = '#cc0000';
+  ctx.beginPath(); ctx.arc(sx + 14 + f * 2, sy + 24, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sx + m.w - 14 + f * 2, sy + 24, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff4444';
+  ctx.beginPath(); ctx.arc(sx + 13 + f * 2, sy + 23, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sx + m.w - 15 + f * 2, sy + 23, 1, 0, Math.PI * 2); ctx.fill();
 
-  // Scowling mouth
+  // === SCOWL MOUTH ===
   ctx.strokeStyle = '#1a0804'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(cx, sy + 36, 5, Math.PI + 0.2, -0.2);
-  ctx.stroke();
-  // Teeth
-  px(cx - 3, sy + 33, 1, 2, '#ddccaa');
-  px(cx + 2, sy + 33, 1, 2, '#ddccaa');
+  ctx.beginPath(); ctx.arc(cx, sy + 36, 5, Math.PI + 0.2, -0.2); ctx.stroke();
+  px(cx - 3 | 0, sy + 33, 1, 2, '#ddccaa');
+  px(cx + 2 | 0, sy + 33, 1, 2, '#ddccaa');
 }
 
 function drawZombie(m, sx, sy) {
@@ -12343,82 +12288,72 @@ function drawZombie(m, sx, sy) {
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.014) * 1);
   const cx = sx + m.w/2;
-  // Decayed stem
-  px(sx + 7, sy + 22 + bob, m.w - 14, m.h - 22, '#1a0a10');
-  px(sx + 8, sy + 22 + bob, m.w - 16, m.h - 22, m.color);
-  px(sx + 8, sy + 22 + bob, 2, m.h - 24, '#96809a');
-  px(sx + m.w - 10, sy + 22 + bob, 2, m.h - 24, '#584060');
-  // Rot streaks
-  px(sx + 11, sy + 30 + bob, 2, m.h - 32, '#3a2844');
-  px(sx + m.w - 13, sy + 28 + bob, 2, m.h - 30, '#3a2844');
-  // Green ooze drip from stem
-  px(cx - 1, sy + m.h - 2, 2, 4, '#4a6a2a');
-  px(cx, sy + m.h + 1, 1, 2, '#7abb4a');
 
-  // Cap outline (shadow)
-  ctx.fillStyle = '#1a0a2a';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 24 + bob, m.w/2 + 1, 24, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap base
+  // === STEM (2-shade cel, decayed) ===
+  px(sx + 8, sy + 24 + bob - 1, m.w - 16, m.h - 23, '#0a0414');
+  px(sx + 9, sy + 24 + bob, m.w - 18, m.h - 24, m.color);
+  px(sx + 9 + Math.floor((m.w - 18) * 0.68), sy + 24 + bob, Math.floor((m.w - 18) * 0.32), m.h - 24, '#4a3860');
+  px(sx + 9, sy + 24 + bob, 3, m.h - 26, '#96809a');
+  px(cx - 4 | 0, sy + 30 + bob, 1, m.h - 34, '#3a1840');
+  // Ooze drip
+  px(cx - 1 | 0, sy + m.h - 4, 2, 5, '#4a7a2a');
+  px(cx | 0, sy + m.h - 1, 1, 3, '#6aaa3a');
+
+  // === CAP (2-shade cel, dark purple) ===
+  ctx.fillStyle = '#0a0418';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 25 + bob, m.w/2 + 1, 26, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = m.shell;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 23 + bob, m.w/2, 22, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap highlight
-  ctx.fillStyle = '#5a4a6a';
-  ctx.beginPath();
-  ctx.ellipse(cx - 1, sy + 10 + bob, m.w/2 - 5, 4, 0, Math.PI, 0);
-  ctx.fill();
-  // Rotted patches (holes in cap)
-  ctx.fillStyle = '#1a0a1a';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 24 + bob, m.w/2, 24, 0, Math.PI, 0); ctx.fill();
+  // Shadow band
+  ctx.fillStyle = '#2a1840';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 24 + bob, m.w/2, 11, 0, Math.PI, 0); ctx.fill();
+  // Faint highlight
+  ctx.fillStyle = '#5a4a72';
+  ctx.beginPath(); ctx.ellipse(cx - 1, sy + 9 + bob, m.w/2 - 6, 4, 0, Math.PI, 0); ctx.fill();
+  // Rot holes + mold (2-shade)
+  ctx.fillStyle = '#0a0418';
   ctx.beginPath(); ctx.arc(cx - 10, sy + 12 + bob, 4, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + 10, sy + 14 + bob, 5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + 2, sy + 6 + bob, 3, 0, Math.PI * 2); ctx.fill();
-  // Green mold inside holes
   ctx.fillStyle = '#4a7a3a';
   ctx.beginPath(); ctx.arc(cx - 10, sy + 12 + bob, 2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + 10, sy + 14 + bob, 3, 0, Math.PI * 2); ctx.fill();
-  // Cap dark edge
-  px(sx + 6, sy + 22 + bob, m.w - 12, 2, '#1a0a2a');
+  ctx.fillStyle = '#7aaa58';
+  ctx.beginPath(); ctx.arc(cx - 10, sy + 12 + bob, 1, 0, Math.PI * 2); ctx.fill();
+  // Gills
+  px(sx + 9, sy + 24 + bob, m.w - 18, 1, '#0a0418');
 
-  // Hollow glowing eyes
-  ctx.fillStyle = 'rgba(80,255,80,0.3)';
-  ctx.beginPath(); ctx.arc(cx - 7 + f, sy + 30 + bob, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 7 + f, sy + 30 + bob, 6, 0, Math.PI * 2); ctx.fill();
-  px(cx - 9, sy + 27 + bob, 5, 5, '#0a1a0a');
-  px(cx + 4, sy + 27 + bob, 5, 5, '#0a1a0a');
-  px(cx - 8 + f, sy + 28 + bob, 3, 3, '#66ff66');
-  px(cx + 5 + f, sy + 28 + bob, 3, 3, '#66ff66');
-  px(cx - 7 + f, sy + 28 + bob, 1, 1, '#ccffcc');
-  px(cx + 6 + f, sy + 28 + bob, 1, 1, '#ccffcc');
+  // === HOLLOW GLOWING GREEN EYES (2-shade) ===
+  ctx.fillStyle = 'rgba(60,220,60,0.25)';
+  ctx.beginPath(); ctx.arc(cx - 7 + f, sy + 31 + bob, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 7 + f, sy + 31 + bob, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0a1a0a';
+  ctx.beginPath(); ctx.arc(cx - 7 + f, sy + 31 + bob, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 7 + f, sy + 31 + bob, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#55ff55';
+  ctx.beginPath(); ctx.arc(cx - 7 + f, sy + 31 + bob, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 7 + f, sy + 31 + bob, 2.5, 0, Math.PI * 2); ctx.fill();
+  px((cx - 8 + f) | 0, (sy + 29 + bob) | 0, 1, 1, '#ccffcc');
+  px((cx + 6 + f) | 0, (sy + 29 + bob) | 0, 1, 1, '#ccffcc');
 
-  // Drippy mouth
-  px(cx - 6, sy + 37 + bob, 12, 2, '#1a1a0a');
-  px(cx - 5, sy + 36 + bob, 10, 1, '#2a2a1a');
-  // Teeth
-  px(cx - 4, sy + 37 + bob, 1, 2, '#9aaa7a');
-  px(cx - 1, sy + 37 + bob, 1, 2, '#9aaa7a');
-  px(cx + 3, sy + 37 + bob, 1, 2, '#9aaa7a');
-  // Green drool
+  // === DRIPPY MOUTH ===
+  px(cx - 6 | 0, sy + 38 + bob, 12, 3, '#0a0a08');
+  px(cx - 4 | 0, sy + 38 + bob, 1, 2, '#8aaa6a');
+  px(cx - 1 | 0, sy + 38 + bob, 1, 2, '#8aaa6a');
+  px(cx + 3 | 0, sy + 38 + bob, 1, 2, '#8aaa6a');
   const drool = Math.sin(m.animTimer * 0.02) * 2;
-  px(cx - 1, sy + 39 + bob, 2, 4 + drool, '#5a9a3a');
-  px(cx - 1, sy + 42 + bob + Math.floor(drool), 2, 2, '#7ac84a');
+  px(cx - 1 | 0, sy + 40 + bob, 2, (4 + drool) | 0, '#4a8a2a');
+  px(cx | 0, sy + 43 + bob + (drool | 0), 1, 2, '#7ac048');
 
-  // Decayed feet
-  px(sx + 4, sy + m.h - 5, 10, 1, '#0a0a14');
-  px(sx + 5, sy + m.h - 4, 9, 4, '#2a1a2a');
-  px(sx + 5, sy + m.h - 4, 9, 1, '#4a3a4a');
-  // Torn toes
-  px(sx + 6, sy + m.h - 1, 1, 1, '#1a0a1a');
-  px(sx + 9, sy + m.h - 1, 1, 1, '#1a0a1a');
-  px(sx + 12, sy + m.h - 1, 1, 1, '#1a0a1a');
-  px(sx + m.w - 14, sy + m.h - 5, 10, 1, '#0a0a14');
-  px(sx + m.w - 13, sy + m.h - 4, 9, 4, '#2a1a2a');
-  px(sx + m.w - 13, sy + m.h - 4, 9, 1, '#4a3a4a');
-  px(sx + m.w - 12, sy + m.h - 1, 1, 1, '#1a0a1a');
-  px(sx + m.w - 9, sy + m.h - 1, 1, 1, '#1a0a1a');
-  px(sx + m.w - 6, sy + m.h - 1, 1, 1, '#1a0a1a');
+  // === FEET (2-shade) ===
+  [sx + 5, sx + m.w - 14].forEach((fx) => {
+    px(fx, sy + m.h - 6, 9, 1, '#0a0414');
+    px(fx + 1, sy + m.h - 5, 8, 4, '#2a1a2a');
+    px(fx + 1, sy + m.h - 5, 8, 1, '#4a3a4a');
+    px(fx + 1, sy + m.h - 2, 1, 1, '#1a0a1a');
+    px(fx + 4, sy + m.h - 2, 1, 1, '#1a0a1a');
+    px(fx + 7, sy + m.h - 2, 1, 1, '#1a0a1a');
+  });
 }
 
 // ===== Dune Scuttler (scorpion) — low flat body, claws, curled tail =====
@@ -12426,67 +12361,63 @@ function drawScorpion(m, sx, sy) {
   const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x|0, y|0, w, h); };
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.03) * 1);
-  const cx = sx + m.w/2, bbY = sy + m.h - 8 + bob;
-  // Shadow under
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  const cx = sx + m.w/2, bbY = sy + m.h - 10 + bob;
+
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // Body outline
-  px(sx + 6, bbY - 1, m.w - 12, 12, '#3a1a08');
-  // Body base (mid)
-  px(sx + 7, bbY, m.w - 14, 10, m.color);
-  // Body shadow (bottom)
-  px(sx + 7, bbY + 5, m.w - 14, 5, m.shell);
-  // Body highlight (top stripe)
-  px(sx + 7, bbY, m.w - 14, 2, '#ffc878');
+
+  // === BODY (2-shade cel) ===
+  px(sx + 6, bbY - 2, m.w - 12, 13, '#2a1008');
+  px(sx + 7, bbY - 1, m.w - 14, 11, m.color);
+  // Shadow strip — lower 45%
+  px(sx + 7, bbY + 4, m.w - 14, 6, m.shell);
+  // Highlight top strip
+  px(sx + 7, bbY - 1, m.w - 14, 2, '#ffd888');
   // Segment dividers
-  for (let i = 1; i < 4; i++) {
-    px(sx + 7 + i * 6, bbY, 1, 10, '#3a1a08');
-  }
-  // Head (front)
-  const hx = f > 0 ? sx + m.w - 10 : sx + 4;
-  px(hx, bbY + 2, 6, 6, '#3a1a08');
-  px(hx + 1, bbY + 3, 4, 4, m.color);
-  // Tiny eyes
-  px(hx + 2, bbY + 4, 1, 1, '#1a0a04');
-  px(hx + 4, bbY + 4, 1, 1, '#1a0a04');
-  // Claws — two from the head
-  const clawBaseY = bbY + 1;
-  const claw1X = hx + (f > 0 ? 4 : -4);
-  const claw2X = hx + (f > 0 ? 7 : -7);
-  [claw1X, claw2X].forEach((cX, i) => {
-    px(cX, clawBaseY, 3, 3, '#3a1a08');
-    px(cX + 1, clawBaseY + 1, 2, 2, m.shell);
-    px(cX + (f > 0 ? 2 : -1), clawBaseY - 1, 2, 2, '#3a1a08');
-    px(cX + (f > 0 ? 2 : -1), clawBaseY - 1, 1, 1, m.shell);
+  for (let i = 1; i < 4; i++) px(sx + 7 + i * 7, bbY - 1, 1, 11, '#2a1008');
+
+  // === HEAD (2-shade cel) ===
+  const hx = f > 0 ? sx + m.w - 12 : sx + 4;
+  px(hx - 1, bbY + 1, 8, 8, '#2a1008');
+  px(hx, bbY + 2, 6, 6, m.color);
+  px(hx + 3, bbY + 4, 3, 4, m.shell);
+  // Cute tiny eyes
+  px(hx + 1, bbY + 3, 2, 2, '#0a0604');
+  px(hx + 4, bbY + 3, 2, 2, '#0a0604');
+  px(hx + 1, bbY + 3, 1, 1, '#ffee88');
+  px(hx + 4, bbY + 3, 1, 1, '#ffee88');
+
+  // === CLAWS (2-shade cel) ===
+  [hx + (f > 0 ? 4 : -4), hx + (f > 0 ? 7 : -7)].forEach((cX) => {
+    px(cX - 1, bbY - 1, 5, 5, '#2a1008');
+    px(cX, bbY, 3, 3, m.color);
+    px(cX + 1, bbY + 1, 2, 2, m.shell);
+    px(cX + (f > 0 ? 2 : -1), bbY - 2, 2, 3, '#2a1008');
+    px(cX + (f > 0 ? 2 : -1), bbY - 2, 1, 1, m.color);
   });
-  // Legs underneath (3 per side staggered with bob)
+
+  // === LEGS ===
   ctx.strokeStyle = '#3a1a08'; ctx.lineWidth = 1;
   for (let i = 0; i < 3; i++) {
-    const lx = sx + 10 + i * 7;
-    const legOffset = (i % 2 === 0) ? bob : -bob;
-    ctx.beginPath();
-    ctx.moveTo(lx, bbY + 8);
-    ctx.lineTo(lx - 2, bbY + 11 + legOffset);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(lx + 1, bbY + 8);
-    ctx.lineTo(lx + 3, bbY + 11 - legOffset);
-    ctx.stroke();
+    const lx = sx + 12 + i * 7;
+    const lo = (i % 2 === 0) ? bob : -bob;
+    ctx.beginPath(); ctx.moveTo(lx, bbY + 9); ctx.lineTo(lx - 2, bbY + 13 + lo); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lx + 1, bbY + 9); ctx.lineTo(lx + 3, bbY + 13 - lo); ctx.stroke();
   }
-  // Curled tail + stinger (behind, arcing over)
-  const tailX = f > 0 ? sx + 4 : sx + m.w - 4;
-  const tailDir = f > 0 ? 1 : -1;
-  px(tailX, bbY + 1, 3, 3, '#3a1a08');
-  px(tailX - tailDir * 2, bbY - 2, 3, 3, '#3a1a08');
-  px(tailX - tailDir * 4, bbY - 5, 3, 3, '#3a1a08');
-  px(tailX - tailDir * 3, bbY - 8, 3, 4, '#3a1a08');
-  // Tail segment highlights
-  px(tailX, bbY + 1, 2, 1, m.color);
-  px(tailX - tailDir * 2, bbY - 2, 2, 1, m.color);
-  px(tailX - tailDir * 4, bbY - 5, 2, 1, m.color);
-  // Stinger tip
-  px(tailX - tailDir * 2, bbY - 10, 2, 2, '#ffcc44');
-  px(tailX - tailDir * 2, bbY - 10, 1, 1, '#ffffff');
+
+  // === TAIL + STINGER (2-shade per segment) ===
+  const tailX = f > 0 ? sx + 6 : sx + m.w - 6;
+  const td = f > 0 ? 1 : -1;
+  [[0, 0], [-td * 2, -3], [-td * 4, -6], [-td * 3, -10]].forEach(([tx, ty]) => {
+    px(tailX + tx - 1, bbY + ty - 1, 5, 5, '#2a1008');
+    px(tailX + tx, bbY + ty, 3, 3, m.color);
+    px(tailX + tx + 1, bbY + ty + 1, 2, 2, m.shell);
+  });
+  // Gold stinger tip
+  px((tailX - td * 2) | 0, bbY - 12, 3, 3, '#aa8820');
+  px((tailX - td * 2) | 0, bbY - 12, 2, 2, '#ffcc44');
+  px((tailX - td * 2) | 0, bbY - 12, 1, 1, '#ffffff');
 }
 
 // ===== Duneborn Mummy — tall bandage-wrapped humanoid =====
@@ -12495,47 +12426,62 @@ function drawMummy(m, sx, sy) {
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.012) * 1);
   const cx = sx + m.w/2;
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // Legs (wrapped, dark seam down middle)
-  px(sx + 10, sy + m.h - 10, 8, 10, '#5a4224');
-  px(sx + 20, sy + m.h - 10, 8, 10, '#5a4224');
-  px(sx + 11, sy + m.h - 10, 6, 9, m.shell);
-  px(sx + 21, sy + m.h - 10, 6, 9, m.shell);
-  // Torso base
+
+  // === LEGS (2-shade cel) ===
+  [sx + 10, sx + 20].forEach((lx) => {
+    px(lx, sy + m.h - 10, 8, 10, '#5a4224');
+    px(lx + 1, sy + m.h - 10, 6, 9, m.shell);
+    px(lx + 4, sy + m.h - 10, 3, 9, m.color);
+  });
+
+  // === TORSO (2-shade cel) ===
   const tY = sy + 16 + bob;
-  px(sx + 6, tY, m.w - 12, 22, '#5a4224');
-  px(sx + 7, tY, m.w - 14, 22, m.color);
-  // Torso shadow stripe on right
-  px(sx + m.w - 11, tY, 3, 22, m.shell);
-  // Bandage wraps — diagonal dark bands
+  px(sx + 5, tY - 1, m.w - 10, 25, '#2a1a08');
+  px(sx + 6, tY, m.w - 12, 24, m.color);
+  // Shadow strip right
+  px(sx + 6 + Math.floor((m.w - 12) * 0.65), tY, Math.floor((m.w - 12) * 0.35), 24, m.shell);
+  // Highlight strip left
+  px(sx + 6, tY, 3, 22, '#f8f0d8');
+  // Bandage wraps (2-tone)
   for (let i = 0; i < 4; i++) {
-    const y0 = tY + 2 + i * 5;
-    px(sx + 7, y0, m.w - 14, 1, '#8a6a40');
-    px(sx + 7, y0 + 1, m.w - 14, 1, '#3a2810');
+    const by = tY + 2 + i * 5;
+    px(sx + 6, by, m.w - 12, 1, '#c8a870');
+    px(sx + 6, by + 1, m.w - 12, 1, '#8a6840');
   }
-  // Head (taller than zombie)
+
+  // === ARMS (2-shade cel) ===
+  [sx + 2, sx + m.w - 7].forEach((ax, i) => {
+    px(ax, tY + 6, 5, 15, '#2a1a08');
+    px(ax + 1, tY + 6, 3, 14, m.color);
+    px(ax + (i === 0 ? 2 : 1), tY + 6, 1, 12, '#c8a870');
+  });
+
+  // === HEAD (2-shade cel) ===
   const hY = sy + 2 + bob;
-  px(sx + 8, hY, m.w - 16, 14, '#5a4224');
-  px(sx + 9, hY + 1, m.w - 18, 12, m.color);
-  // Head bandage stripes
-  px(sx + 9, hY + 4, m.w - 18, 2, '#8a6a40');
-  px(sx + 9, hY + 8, m.w - 18, 2, '#8a6a40');
-  // Red glowing single eye socket
+  px(sx + 8, hY - 1, m.w - 16, 16, '#2a1a08');
+  px(sx + 9, hY, m.w - 18, 14, m.color);
+  px(sx + 9 + Math.floor((m.w - 18) * 0.65), hY, Math.floor((m.w - 18) * 0.35), 14, m.shell);
+  px(sx + 9, hY, 3, 12, '#f8f0d8');
+  // Bandage stripes
+  px(sx + 9, hY + 4, m.w - 18, 2, '#c8a870');
+  px(sx + 9, hY + 4, m.w - 18, 1, '#f0d8b0');
+  px(sx + 9, hY + 8, m.w - 18, 2, '#c8a870');
+
+  // === SINGLE GLOWING EYE ===
   const eyeX = cx - 1 + f;
-  px(eyeX, hY + 6, 3, 2, '#1a0804');
-  px(eyeX + 1, hY + 6, 1, 1, '#ff3322');
-  // Arms hanging
-  px(sx + 3, tY + 6, 4, 14, '#5a4224');
-  px(sx + 4, tY + 6, 2, 13, m.color);
-  px(sx + m.w - 7, tY + 6, 4, 14, '#5a4224');
-  px(sx + m.w - 6, tY + 6, 2, 13, m.color);
-  // Trailing bandage strip (always on facing side)
+  ctx.fillStyle = 'rgba(255,50,30,0.3)';
+  ctx.beginPath(); ctx.arc(eyeX + 1, hY + 7, 5, 0, Math.PI * 2); ctx.fill();
+  px(eyeX, hY + 6, 4, 3, '#1a0804');
+  px(eyeX + 1, hY + 7, 2, 1, '#ff4422');
+  px(eyeX + 1, hY + 7, 1, 1, '#ffaa88');
+
+  // Trailing bandage strip
   const bx = f > 0 ? sx + m.w - 2 : sx - 2;
-  for (let i = 0; i < 4; i++) {
-    px(bx + (f > 0 ? i : -i), tY + 2 + i * 3, 2, 1, m.color);
-  }
+  for (let i = 0; i < 4; i++) px(bx + (f > 0 ? i : -i), tY + 2 + i * 3, 2, 1, m.color);
 }
 
 // ===== Bone Archer (skeleton) — ribcage, pelvic bones, bow silhouette =====
@@ -12544,58 +12490,72 @@ function drawSkeletonMob(m, sx, sy) {
   const f = m.facing;
   const bob = Math.floor(Math.sin(m.animTimer * 0.014) * 1);
   const cx = sx + m.w/2;
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2, 3, 0, 0, Math.PI * 2); ctx.fill();
-  // Legs (skeletal, two bones per side)
-  const legY = sy + m.h - 12;
-  px(sx + 12, legY, 2, 12, '#1a1020');
-  px(sx + 12, legY, 1, 12, '#e8e0d0');
-  px(sx + 22, legY, 2, 12, '#1a1020');
-  px(sx + 22, legY, 1, 12, '#e8e0d0');
-  // Feet
-  px(sx + 10, sy + m.h - 2, 5, 2, '#1a1020');
-  px(sx + 21, sy + m.h - 2, 5, 2, '#1a1020');
-  // Pelvis
-  px(sx + 10, sy + m.h - 14, 16, 4, '#1a1020');
-  px(sx + 11, sy + m.h - 13, 14, 3, m.color);
-  px(sx + 14, sy + m.h - 13, 2, 3, '#1a1020');
-  px(sx + 20, sy + m.h - 13, 2, 3, '#1a1020');
-  // Ribcage base
+
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2 - 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+  // === LEGS (bone, 2-shade) ===
+  [sx + 11, sx + 21].forEach((lx) => {
+    const legY = sy + m.h - 12;
+    px(lx, legY, 3, 12, '#1a1020');
+    px(lx, legY, 2, 12, m.color);
+    px(lx, legY, 1, 12, '#ffffff');
+    // Foot
+    px(lx - 1, sy + m.h - 3, 5, 3, '#1a1020');
+    px(lx, sy + m.h - 2, 4, 2, m.color);
+  });
+
+  // === PELVIS (2-shade) ===
+  px(sx + 9, sy + m.h - 15, 18, 5, '#1a1020');
+  px(sx + 10, sy + m.h - 14, 16, 4, m.color);
+  px(sx + 10, sy + m.h - 14, 16, 1, '#ffffff');
+  px(sx + 13, sy + m.h - 13, 3, 3, '#1a1020');
+  px(sx + 20, sy + m.h - 13, 3, 3, '#1a1020');
+
+  // === RIBCAGE (2-shade) ===
   const rY = sy + 12 + bob;
-  px(sx + 10, rY, 16, 14, '#1a1020');
-  px(sx + 11, rY + 1, 14, 13, m.color);
-  // Spine (darker centre line)
-  px(sx + 17, rY + 1, 2, 13, '#8a8070');
-  // Rib lines
+  px(sx + 9, rY - 1, 18, 16, '#1a1020');
+  px(sx + 10, rY, 16, 15, m.color);
+  // Shadow right half
+  px(sx + 18, rY, 8, 15, '#b8b0a0');
+  // Spine
+  px(sx + 17, rY, 2, 15, '#9a9088');
+  // Ribs (4 pairs)
   for (let i = 0; i < 4; i++) {
-    px(sx + 11, rY + 2 + i * 3, 6, 1, '#1a1020');
-    px(sx + 19, rY + 2 + i * 3, 6, 1, '#1a1020');
+    px(sx + 10, rY + 2 + i * 3, 7, 1, '#1a1020');
+    px(sx + 19, rY + 2 + i * 3, 7, 1, '#1a1020');
+    px(sx + 10, rY + 2 + i * 3, 3, 1, '#ffffff');
   }
-  // Skull
+
+  // === SKULL (2-shade) ===
   const skY = sy + bob;
-  px(sx + 10, skY, 16, 13, '#1a1020');
-  px(sx + 11, skY + 1, 14, 11, m.color);
-  px(sx + 11, skY + 1, 14, 2, '#ffffff');   // highlight brow
-  // Eye sockets — glowing cyan for menace
-  px(sx + 13, skY + 5, 3, 3, '#1a1020');
-  px(sx + 20, skY + 5, 3, 3, '#1a1020');
-  px(sx + 14, skY + 6, 1, 1, '#44aaff');
-  px(sx + 21, skY + 6, 1, 1, '#44aaff');
+  px(sx + 9, skY - 1, 18, 14, '#1a1020');
+  px(sx + 10, skY, 16, 13, m.color);
+  // Shadow right half
+  px(sx + 18, skY, 8, 13, '#b8b0a0');
+  // Brow highlight
+  px(sx + 10, skY, 16, 2, '#ffffff');
+  // Eye sockets with glowing cyan
+  [sx + 12, sx + 20].forEach((ex) => {
+    px(ex, skY + 5, 4, 4, '#1a1020');
+    ctx.fillStyle = '#44aaff';
+    ctx.beginPath(); ctx.arc(ex + 2, skY + 7, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#88ccff';
+    ctx.beginPath(); ctx.arc(ex + 2, skY + 7, 0.8, 0, Math.PI * 2); ctx.fill();
+  });
   // Jaw
-  px(sx + 14, skY + 10, 8, 2, '#1a1020');
-  px(sx + 15, skY + 10, 6, 1, m.color);
-  // Tiny bow silhouette in hand (facing-dependent)
-  const bx = f > 0 ? sx + m.w - 2 : sx - 2;
+  px(sx + 13, skY + 11, 10, 2, '#1a1020');
+  px(sx + 14, skY + 11, 8, 1, m.color);
+  for (let i = 0; i < 3; i++) px(sx + 14 + i * 3, skY + 11, 1, 2, '#1a1020');
+
+  // === BOW SILHOUETTE ===
+  const bx = f > 0 ? sx + m.w - 1 : sx - 1;
   const bY = rY + 4;
-  ctx.strokeStyle = '#6a4a28'; ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(bx, bY - 6);
-  ctx.quadraticCurveTo(bx + (f > 0 ? 3 : -3), bY, bx, bY + 6);
-  ctx.stroke();
-  // Bowstring
-  ctx.strokeStyle = '#d8d8d0';
-  ctx.beginPath(); ctx.moveTo(bx, bY - 6); ctx.lineTo(bx, bY + 6); ctx.stroke();
+  ctx.strokeStyle = '#7a5030'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(bx, bY - 7); ctx.quadraticCurveTo(bx + (f > 0 ? 4 : -4), bY, bx, bY + 7); ctx.stroke();
+  ctx.strokeStyle = '#d0d0c0'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bx, bY - 7); ctx.lineTo(bx, bY + 7); ctx.stroke();
 }
 
 // ===== Pale Wraith — hovering hooded cloak, glowing eyes =====
@@ -12604,67 +12564,75 @@ function drawWraith(m, sx, sy) {
   const f = m.facing;
   const hover = Math.sin(m.animTimer * 0.025) * 4;
   const cx = sx + m.w/2;
-  // Aura glow halo (behind)
+
+  // Aura glow
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = 'rgba(120,180,255,0.25)';
-  ctx.beginPath(); ctx.arc(cx, sy + 24 + hover, 24, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(100,160,255,0.2)';
+  ctx.beginPath(); ctx.arc(cx, sy + 24 + hover, 26, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // Drifting shadow on ground (no feet touching)
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.beginPath(); ctx.ellipse(cx, sy + m.h + 2, m.w/2 - 6, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-  // Wispy bottom tendrils (tattered cloak tails)
+
+  // Floating shadow (smaller, no feet)
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(cx, sy + m.h + 2, m.w/2 - 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // === CLOAK TENDRILS (2-shade) ===
   for (let i = 0; i < 5; i++) {
     const tx = sx + 8 + i * 5;
     const wave = Math.sin(m.animTimer * 0.04 + i) * 2;
-    const len = 16 + (i % 2 === 0 ? 4 : 0);
-    px(tx, sy + m.h - 18 + hover, 3, len, m.shell);
-    px(tx, sy + m.h - 18 + hover, 1, len, m.color);
-    px(tx + wave * 0.3, sy + m.h - 4 + hover, 3, 4, m.shell);
+    const len = 16 + (i % 2 === 0 ? 5 : 0);
+    px(tx + 1, (sy + m.h - 19 + hover) | 0, 3, len, m.shell);
+    px(tx, (sy + m.h - 19 + hover) | 0, 2, len, m.color);
+    px((tx + wave * 0.3) | 0, (sy + m.h - 4 + hover) | 0, 2, 4, m.shell);
   }
-  // Body cloak — triangular silhouette
-  const cY = sy + 10 + hover;
+
+  // === BODY CLOAK (2-shade trapezoid) ===
+  const cY = (sy + 10 + hover) | 0;
+  // Outline / shadow shape
   ctx.fillStyle = m.shell;
   ctx.beginPath();
-  ctx.moveTo(sx + 6, cY + 14);
-  ctx.lineTo(sx + m.w - 6, cY + 14);
-  ctx.lineTo(sx + m.w - 12, cY + 32);
-  ctx.lineTo(sx + 12, cY + 32);
+  ctx.moveTo(sx + 4, cY + 14); ctx.lineTo(sx + m.w - 4, cY + 14);
+  ctx.lineTo(sx + m.w - 10, cY + 34); ctx.lineTo(sx + 10, cY + 34);
   ctx.closePath(); ctx.fill();
-  // Main cloak fill (lighter)
+  // Base fill (shade 1)
   ctx.fillStyle = m.color;
   ctx.beginPath();
-  ctx.moveTo(sx + 8, cY + 14);
-  ctx.lineTo(sx + m.w - 8, cY + 14);
-  ctx.lineTo(sx + m.w - 13, cY + 28);
-  ctx.lineTo(sx + 13, cY + 28);
+  ctx.moveTo(sx + 7, cY + 14); ctx.lineTo(sx + m.w - 7, cY + 14);
+  ctx.lineTo(sx + m.w - 12, cY + 32); ctx.lineTo(sx + 12, cY + 32);
   ctx.closePath(); ctx.fill();
-  // Left-side highlight ribbon (2-tone)
+  // Shadow — right half
+  ctx.fillStyle = m.shell;
+  ctx.beginPath();
+  ctx.moveTo(cx, cY + 14); ctx.lineTo(sx + m.w - 7, cY + 14);
+  ctx.lineTo(sx + m.w - 12, cY + 32); ctx.lineTo(cx + 2, cY + 32);
+  ctx.closePath(); ctx.fill();
+  // Highlight ribbon left
   ctx.fillStyle = '#ddeeff';
-  ctx.fillRect(sx + 9, cY + 14, 2, 14);
-  // Hood — arched over the "head"
+  ctx.fillRect(sx + 8, cY + 14, 2, 16);
+
+  // === HOOD (2-shade half-ellipse) ===
   ctx.fillStyle = m.shell;
-  ctx.beginPath();
-  ctx.ellipse(cx, cY + 8, m.w/2 - 4, 10, 0, Math.PI, 0);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, cY + 8, m.w/2 - 3, 11, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = m.color;
-  ctx.beginPath();
-  ctx.ellipse(cx, cY + 8, m.w/2 - 6, 8, 0, Math.PI, 0);
-  ctx.fill();
-  // Inside hood — pitch black oval
-  ctx.fillStyle = '#0a0814';
-  ctx.beginPath();
-  ctx.ellipse(cx, cY + 10, m.w/2 - 10, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Glowing eyes inside the hood
-  ctx.fillStyle = '#66ffff';
-  ctx.fillRect(cx - 5 + f, cY + 9, 3, 2);
-  ctx.fillRect(cx + 2 + f, cY + 9, 3, 2);
-  // Eye inner bright core
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(cx - 4 + f, cY + 9, 1, 1);
-  ctx.fillRect(cx + 3 + f, cY + 9, 1, 1);
-  // Floating wisp particles
+  ctx.beginPath(); ctx.ellipse(cx, cY + 8, m.w/2 - 5, 9, 0, Math.PI, 0); ctx.fill();
+  // Shadow — right half of hood
+  ctx.fillStyle = m.shell;
+  ctx.beginPath(); ctx.ellipse(cx + 3, cY + 9, m.w/4 - 2, 7, 0, Math.PI, 0); ctx.fill();
+  // Black void inside
+  ctx.fillStyle = '#060614';
+  ctx.beginPath(); ctx.ellipse(cx, cY + 10, m.w/2 - 9, 7, 0, 0, Math.PI * 2); ctx.fill();
+
+  // === GLOWING EYES (2-shade cyan) ===
+  [cx - 5 + f, cx + 2 + f].forEach((ex) => {
+    ctx.fillStyle = 'rgba(100,255,255,0.4)';
+    ctx.beginPath(); ctx.arc(ex + 1, cY + 10, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#44ccee';
+    ctx.fillRect(ex | 0, cY + 9 | 0, 3, 2);
+    ctx.fillStyle = '#aaffff';
+    ctx.fillRect((ex + 0.5) | 0, cY + 9 | 0, 1, 1);
+  });
+
+  // Wisp particles
   if (game.time % 6 === 0) {
     game.particles.push({
       x: cx + (Math.random() - 0.5) * m.w * 0.8,
@@ -12680,135 +12648,86 @@ function drawKingSlime(m, sx, sy) {
   const bounce = Math.floor(Math.sin(m.animTimer * 0.015) * 3);
   const f = m.facing;
   const cx = sx + m.w/2, cy = sy + m.h - 15 + bounce;
+  const rX = m.w/2, rY = m.h/2 - bounce;
 
-  // Body shadow ground
+  // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + m.h, m.w/2, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2, 6, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Outline
-  ctx.strokeStyle = '#1a4a7a'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, m.w/2, m.h/2 - bounce, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  // Body base (blue)
+  // === BODY (2-shade cel) ===
+  ctx.strokeStyle = '#1a4a7a'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = m.color;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, m.w/2, m.h/2 - bounce, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Bottom shadow
-  ctx.fillStyle = '#3388cc';
-  ctx.beginPath();
-  ctx.ellipse(cx + 3, cy + 6, m.w/2 - 4, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Dome highlight
-  ctx.fillStyle = '#aaddff';
-  ctx.beginPath();
-  ctx.ellipse(cx - 6, cy - m.h/3, m.w/3, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Big shine spot
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.fill();
+  // Shadow blob (shade 2) — lower
+  ctx.fillStyle = m.shell;
+  ctx.beginPath(); ctx.ellipse(cx + 3, cy + rY * 0.35, rX - 5, rY * 0.58, 0, 0, Math.PI * 2); ctx.fill();
+  // Highlight dome — upper-left
+  ctx.fillStyle = '#cceeff';
+  ctx.beginPath(); ctx.ellipse(cx - rX * 0.28, cy - rY * 0.35, rX * 0.42, rY * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+  // Shiny spot
   ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(cx - 12, cy - m.h/3 - 1, 3, 0, Math.PI * 2); ctx.fill();
-  // Tiny mini-slimes inside translucent body
-  ctx.fillStyle = 'rgba(30,80,150,0.55)';
-  ctx.beginPath(); ctx.arc(cx - 10, cy + 5, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 8, cy + 8, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 4, cy + 12, 3, 0, Math.PI * 2); ctx.fill();
-  // Their tiny eyes
-  ctx.fillStyle = '#1a3a5a';
-  px(cx - 11, cy + 4, 1, 1, '#1a3a5a');
-  px(cx - 9, cy + 4, 1, 1, '#1a3a5a');
-  px(cx + 7, cy + 7, 1, 1, '#1a3a5a');
+  ctx.beginPath(); ctx.arc(cx - rX * 0.45, cy - rY * 0.44, 4, 0, Math.PI * 2); ctx.fill();
+  // Redraw outline
+  ctx.strokeStyle = '#1a4a7a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2); ctx.stroke();
+  // Mini slimes inside
+  ctx.fillStyle = 'rgba(30,80,150,0.5)';
+  ctx.beginPath(); ctx.arc(cx - 12, cy + 6, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 10, cy + 9, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 4, cy + 14, 4, 0, Math.PI * 2); ctx.fill();
+  px(cx - 13 | 0, cy + 5 | 0, 1, 1, '#1a3a5a');
+  px(cx - 11 | 0, cy + 5 | 0, 1, 1, '#1a3a5a');
+  px(cx + 9 | 0, cy + 8 | 0, 1, 1, '#1a3a5a');
 
-  // Crown
+  // === CROWN (keep ornate) ===
   const crownY = sy + 2 + bounce;
-  // Crown base band
-  ctx.fillStyle = '#aa6a00';
-  px(cx - 20, crownY + 8, 40, 4, '#aa6a00');
-  ctx.fillStyle = '#ffcc44';
-  px(cx - 20, crownY + 7, 40, 2, '#ffcc44');
-  px(cx - 20, crownY + 7, 40, 1, '#ffee88');
-  // Spikes with gems
+  px(cx - 20 | 0, crownY + 8, 40, 4, '#aa6a00');
+  px(cx - 20 | 0, crownY + 7, 40, 2, '#ffcc44');
+  px(cx - 20 | 0, crownY + 7, 40, 1, '#ffee88');
   const spikes = [[-18, 0, '#dd2244'], [-6, -6, '#4488ff'], [6, -6, '#4488ff'], [18, 0, '#dd2244']];
   for (const [dx, dy, gem] of spikes) {
-    // Gold spike
     ctx.fillStyle = '#aa6a00';
-    ctx.beginPath();
-    ctx.moveTo(cx + dx - 3, crownY + 8);
-    ctx.lineTo(cx + dx, crownY + dy - 2);
-    ctx.lineTo(cx + dx + 3, crownY + 8);
-    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx + dx - 3, crownY + 8); ctx.lineTo(cx + dx, crownY + dy - 2); ctx.lineTo(cx + dx + 3, crownY + 8); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffcc44';
-    ctx.beginPath();
-    ctx.moveTo(cx + dx - 2, crownY + 8);
-    ctx.lineTo(cx + dx, crownY + dy);
-    ctx.lineTo(cx + dx + 2, crownY + 8);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ffee88';
-    ctx.fillRect(cx + dx - 1, crownY + dy + 1, 1, 4);
-    // Gem
-    ctx.fillStyle = gem;
-    ctx.beginPath(); ctx.arc(cx + dx, crownY + dy, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx + dx - 1, crownY + dy - 1, 1, 1);
+    ctx.beginPath(); ctx.moveTo(cx + dx - 2, crownY + 8); ctx.lineTo(cx + dx, crownY + dy); ctx.lineTo(cx + dx + 2, crownY + 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffee88'; ctx.fillRect(cx + dx - 1, crownY + dy + 1, 1, 4);
+    ctx.fillStyle = gem; ctx.beginPath(); ctx.arc(cx + dx, crownY + dy, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(cx + dx - 1, crownY + dy - 1, 1, 1);
   }
-  // Center spike (tallest) with ruby
   ctx.fillStyle = '#aa6a00';
-  ctx.beginPath();
-  ctx.moveTo(cx - 4, crownY + 8);
-  ctx.lineTo(cx, crownY - 10);
-  ctx.lineTo(cx + 4, crownY + 8);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 4, crownY + 8); ctx.lineTo(cx, crownY - 10); ctx.lineTo(cx + 4, crownY + 8); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#ffcc44';
-  ctx.beginPath();
-  ctx.moveTo(cx - 3, crownY + 8);
-  ctx.lineTo(cx, crownY - 8);
-  ctx.lineTo(cx + 3, crownY + 8);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffee88';
-  ctx.fillRect(cx - 1, crownY - 6, 1, 8);
-  ctx.fillStyle = '#ff3355';
-  ctx.beginPath(); ctx.arc(cx, crownY - 9, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ff8899';
-  ctx.fillRect(cx - 2, crownY - 10, 1, 1);
+  ctx.beginPath(); ctx.moveTo(cx - 3, crownY + 8); ctx.lineTo(cx, crownY - 8); ctx.lineTo(cx + 3, crownY + 8); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffee88'; ctx.fillRect(cx - 1, crownY - 6, 1, 8);
+  ctx.fillStyle = '#ff3355'; ctx.beginPath(); ctx.arc(cx, crownY - 9, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff8899'; ctx.fillRect(cx - 2, crownY - 10, 1, 1);
 
-  // Eyes — big with sparkle
-  const eyeY = cy - 4;
-  // Whites
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(cx - 14 + f * 2, eyeY, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 14 + f * 2, eyeY, 7, 0, Math.PI * 2); ctx.fill();
-  // Outlines
-  ctx.strokeStyle = '#1a3a5a'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx - 14 + f * 2, eyeY, 7, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx + 14 + f * 2, eyeY, 7, 0, Math.PI * 2); ctx.stroke();
-  // Irises (blue)
-  ctx.fillStyle = '#4488cc';
-  ctx.beginPath(); ctx.arc(cx - 13 + f * 3, eyeY, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 15 + f * 3, eyeY, 4, 0, Math.PI * 2); ctx.fill();
-  // Pupils
-  ctx.fillStyle = '#0a1a2a';
-  ctx.beginPath(); ctx.arc(cx - 13 + f * 3, eyeY, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 15 + f * 3, eyeY, 2, 0, Math.PI * 2); ctx.fill();
-  // Sparkles
-  px(cx - 15 + f * 3, eyeY - 2, 2, 2, '#ffffff');
-  px(cx + 13 + f * 3, eyeY - 2, 2, 2, '#ffffff');
+  // === BIG CUTE EYES (2-shade) ===
+  const eyeY = cy - 5;
+  const eR = 8;
+  [-15, 15].forEach((dx) => {
+    ctx.fillStyle = '#1a3a5a';
+    ctx.beginPath(); ctx.arc(cx + dx + f * 2, eyeY + 0.5, eR + 1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx + dx + f * 2, eyeY, eR, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4488cc';
+    ctx.beginPath(); ctx.arc(cx + dx + f * 3, eyeY + 0.5, eR * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a1a2a';
+    ctx.beginPath(); ctx.arc(cx + dx + f * 3, eyeY + 0.5, eR * 0.3, 0, Math.PI * 2); ctx.fill();
+    px((cx + dx + f * 2 - 4) | 0, (eyeY - 4) | 0, 3, 3, '#ffffff');
+    px((cx + dx + f * 2 + 1) | 0, (eyeY + 1) | 0, 1, 1, '#ffffff');
+  });
 
   // Big laughing mouth
-  ctx.fillStyle = '#4a1422';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 6, 10, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Tongue
+  ctx.fillStyle = '#3a1020';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 6, 11, 6, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#ff5577';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 8, 7, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Teeth
-  px(cx - 6, cy + 1, 2, 2, '#ffffff');
-  px(cx + 4, cy + 1, 2, 2, '#ffffff');
+  ctx.beginPath(); ctx.ellipse(cx, cy + 8, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff88aa';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 7, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+  px(cx - 7 | 0, cy + 1 | 0, 2, 2, '#ffffff');
+  px(cx + 5 | 0, cy + 1 | 0, 2, 2, '#ffffff');
 }
 
 function drawGravitos(m, sx, sy) {
@@ -13025,112 +12944,72 @@ function drawMushmom(m, sx, sy) {
 
   // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + m.h, m.w/2, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, sy + m.h, m.w/2, 7, 0, 0, Math.PI * 2); ctx.fill();
 
-  // === STEM (body) ===
-  px(sx + 13, sy + 40 + bob, m.w - 26, m.h - 40, '#2a1a08');
-  px(sx + 14, sy + 40 + bob, m.w - 28, m.h - 40, m.color);
-  // Stem shading
-  px(sx + 14, sy + 40 + bob, 4, m.h - 44, '#f8e0b8');
-  px(sx + m.w - 18, sy + 40 + bob, 4, m.h - 44, '#c8a070');
-  px(sx + m.w - 15, sy + 40 + bob, 1, m.h - 44, '#8a6a3a');
+  // === STEM (2-shade cel) ===
+  const stemW = m.w - 28, stemX = sx + 14, stemY = sy + 40 + bob;
+  px(stemX - 1, stemY - 1, stemW + 2, m.h - 39, '#2a1a08');
+  px(stemX, stemY, stemW, m.h - 40, m.color);
+  // Shadow strip right
+  px(stemX + Math.floor(stemW * 0.65), stemY, Math.floor(stemW * 0.35), m.h - 44, '#c8a070');
+  // Highlight strip left
+  px(stemX, stemY, 4, m.h - 44, '#f8e0b8');
   // Belly ring
-  px(sx + 15, sy + 55 + bob, m.w - 30, 1, '#c8a070');
+  px(stemX, sy + 55 + bob, stemW, 1, '#c8a070');
 
-  // === CAP (huge) ===
-  // Dark shadow outline
+  // === CAP (2-shade cel half-ellipse) ===
   ctx.fillStyle = '#4a0a1a';
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 42 + bob, m.w/2 + 2, 40, 0, Math.PI, 0);
-  ctx.fill();
-  // Cap base
+  ctx.beginPath(); ctx.ellipse(cx, sy + 42 + bob, m.w/2 + 2, 40, 0, Math.PI, 0); ctx.fill();
   ctx.fillStyle = m.shell;
-  ctx.beginPath();
-  ctx.ellipse(cx, sy + 40 + bob, m.w/2, 38, 0, Math.PI, 0);
-  ctx.fill();
-  // Top highlight dome
+  ctx.beginPath(); ctx.ellipse(cx, sy + 40 + bob, m.w/2, 38, 0, Math.PI, 0); ctx.fill();
+  // Shadow band — lower 35%
+  ctx.fillStyle = '#881a33';
+  ctx.beginPath(); ctx.ellipse(cx, sy + 40 + bob, m.w/2, 14, 0, Math.PI, 0); ctx.fill();
+  // Highlight dome — upper
   ctx.fillStyle = '#e04460';
-  ctx.beginPath();
-  ctx.ellipse(cx - 2, sy + 14 + bob, m.w/3, 8, 0, Math.PI, 0);
-  ctx.fill();
-  // Darker bottom band
+  ctx.beginPath(); ctx.ellipse(cx - 2, sy + 14 + bob, m.w/3, 8, 0, Math.PI, 0); ctx.fill();
+  // Gills
   px(sx + 8, sy + 38 + bob, m.w - 16, 3, '#882244');
-  // Even darker under-gills
   px(sx + 16, sy + 40 + bob, m.w - 32, 1, '#2a0a14');
-  // Gill lines
-  for (let i = 0; i < 6; i++) {
-    px(sx + 18 + i * 7, sy + 38 + bob, 1, 3, '#2a0a14');
-  }
+  for (let i = 0; i < 6; i++) px(sx + 18 + i * 7, sy + 38 + bob, 1, 3, '#2a0a14');
 
-  // Spots (big with shadow sides)
+  // Spots (2-shade)
   const spots = [
-    { dx: -22, dy: 10, r: 6 },
-    { dx: 20, dy: 14, r: 7 },
-    { dx: -4, dy: 4, r: 5 },
-    { dx: -28, dy: 24, r: 4 },
-    { dx: 26, dy: 4, r: 5 },
-    { dx: 8, dy: 20, r: 5 },
+    { dx: -22, dy: 10, r: 6 }, { dx: 20, dy: 14, r: 7 },
+    { dx: -4, dy: 4, r: 5 },   { dx: -28, dy: 24, r: 4 },
+    { dx: 26, dy: 4, r: 5 },   { dx: 8, dy: 20, r: 5 },
   ];
   for (const s of spots) {
-    // Shadow under spot
-    ctx.fillStyle = '#881a33';
+    ctx.fillStyle = '#d8d8d8';
     ctx.beginPath(); ctx.arc(cx + s.dx + 1, sy + 10 + s.dy + bob + 1, s.r, 0, Math.PI * 2); ctx.fill();
-    // White spot
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.arc(cx + s.dx, sy + 10 + s.dy + bob, s.r, 0, Math.PI * 2); ctx.fill();
-    // Highlight
-    ctx.fillStyle = '#ffffff';
-    px(cx + s.dx - s.r/2, sy + 10 + s.dy + bob - s.r/2, 2, 2, '#ffffff');
-    // Subtle shadow on lower-right of spot
-    ctx.fillStyle = '#d8d8d8';
-    ctx.beginPath(); ctx.arc(cx + s.dx + s.r/3, sy + 10 + s.dy + bob + s.r/3, s.r/3, 0, Math.PI * 2); ctx.fill();
+    px((cx + s.dx - s.r * 0.5) | 0, (sy + 10 + s.dy + bob - s.r * 0.5) | 0, 2, 2, '#ffffff');
   }
 
-  // === CROWN (ornate gold with red ruby) ===
+  // === CROWN (keep ornate) ===
   const crownY = sy - 16 + bob;
-  // Crown band shadow
-  px(sx + m.w/2 - 20, crownY + 16, 40, 6, '#8a5a10');
-  // Crown band base
-  px(sx + m.w/2 - 20, crownY + 16, 40, 4, '#ffcc44');
-  px(sx + m.w/2 - 20, crownY + 16, 40, 1, '#ffee88');
-  px(sx + m.w/2 - 20, crownY + 19, 40, 1, '#aa7722');
-  // Decoration gems on band
+  px(cx - 20 | 0, crownY + 16, 40, 6, '#8a5a10');
+  px(cx - 20 | 0, crownY + 16, 40, 4, '#ffcc44');
+  px(cx - 20 | 0, crownY + 16, 40, 1, '#ffee88');
+  px(cx - 20 | 0, crownY + 19, 40, 1, '#aa7722');
   ctx.fillStyle = '#ff3344';
-  ctx.beginPath(); ctx.arc(sx + m.w/2 - 14, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(sx + m.w/2 + 14, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 14, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 14, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#4488ff';
-  ctx.beginPath(); ctx.arc(sx + m.w/2 - 7, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(sx + m.w/2 + 7, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
-  // Spikes
-  const cspikes = [-2, -1, 0, 1, 2];
-  for (const i of cspikes) {
-    const sxi = sx + m.w/2 + i * 8;
+  ctx.beginPath(); ctx.arc(cx - 7, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 7, crownY + 18, 2, 0, Math.PI * 2); ctx.fill();
+  for (const i of [-2, -1, 0, 1, 2]) {
+    const sxi = cx + i * 8;
     const h = 14 - Math.abs(i) * 2;
-    // Spike shadow
     ctx.fillStyle = '#8a5a10';
-    ctx.beginPath();
-    ctx.moveTo(sxi - 4, crownY + 16);
-    ctx.lineTo(sxi, crownY + 16 - h);
-    ctx.lineTo(sxi + 4, crownY + 16);
-    ctx.closePath(); ctx.fill();
-    // Spike gold
+    ctx.beginPath(); ctx.moveTo(sxi - 4, crownY + 16); ctx.lineTo(sxi, crownY + 16 - h); ctx.lineTo(sxi + 4, crownY + 16); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffcc44';
-    ctx.beginPath();
-    ctx.moveTo(sxi - 3, crownY + 16);
-    ctx.lineTo(sxi, crownY + 18 - h);
-    ctx.lineTo(sxi + 3, crownY + 16);
-    ctx.closePath(); ctx.fill();
-    // Spike highlight
-    ctx.fillStyle = '#ffee88';
-    px(sxi - 1, crownY + 16 - h + 1, 1, h - 1, '#ffee88');
-    // Tip jewel on center
+    ctx.beginPath(); ctx.moveTo(sxi - 3, crownY + 16); ctx.lineTo(sxi, crownY + 18 - h); ctx.lineTo(sxi + 3, crownY + 16); ctx.closePath(); ctx.fill();
+    px(sxi - 1 | 0, crownY + 16 - h + 1, 1, h - 1, '#ffee88');
     if (i === 0) {
-      ctx.fillStyle = '#ff3355';
-      ctx.beginPath(); ctx.arc(sxi, crownY + 18 - h, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ff8899';
-      px(sxi - 2, crownY + 16 - h, 1, 1, '#ff8899');
+      ctx.fillStyle = '#ff3355'; ctx.beginPath(); ctx.arc(sxi, crownY + 18 - h, 3, 0, Math.PI * 2); ctx.fill();
+      px(sxi - 2 | 0, crownY + 16 - h, 1, 1, '#ff8899');
     }
   }
 
@@ -13138,92 +13017,57 @@ function drawMushmom(m, sx, sy) {
   // Furrowed brow
   ctx.strokeStyle = '#2a0810'; ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(sx + m.w/2 - 26, sy + 42 + bob);
-  ctx.lineTo(sx + m.w/2 - 8, sy + 49 + bob);
-  ctx.moveTo(sx + m.w/2 + 26, sy + 42 + bob);
-  ctx.lineTo(sx + m.w/2 + 8, sy + 49 + bob);
+  ctx.moveTo(cx - 26, sy + 42 + bob); ctx.lineTo(cx - 8, sy + 49 + bob);
+  ctx.moveTo(cx + 26, sy + 42 + bob); ctx.lineTo(cx + 8, sy + 49 + bob);
   ctx.stroke();
 
-  // Eye whites
+  // === EYES (2-shade cel, big angry) ===
+  // Outline
   ctx.fillStyle = '#1a0414';
   ctx.fillRect(cx - 24, sy + 47 + bob, 14, 10);
   ctx.fillRect(cx + 10, sy + 47 + bob, 14, 10);
+  // White
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(cx - 23, sy + 48 + bob, 12, 8);
   ctx.fillRect(cx + 11, sy + 48 + bob, 12, 8);
-  // Angry eye slant
+  // Angry slant shadow
   ctx.fillStyle = '#1a0414';
-  ctx.beginPath();
-  ctx.moveTo(cx - 23, sy + 48 + bob);
-  ctx.lineTo(cx - 11, sy + 48 + bob);
-  ctx.lineTo(cx - 11, sy + 50 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx + 11, sy + 48 + bob);
-  ctx.lineTo(cx + 23, sy + 48 + bob);
-  ctx.lineTo(cx + 23, sy + 50 + bob);
-  ctx.closePath(); ctx.fill();
-  // Red irises with glow
-  ctx.fillStyle = 'rgba(255,30,40,0.4)';
+  ctx.beginPath(); ctx.moveTo(cx - 23, sy + 48 + bob); ctx.lineTo(cx - 11, sy + 48 + bob); ctx.lineTo(cx - 11, sy + 51 + bob); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 11, sy + 48 + bob); ctx.lineTo(cx + 23, sy + 48 + bob); ctx.lineTo(cx + 23, sy + 51 + bob); ctx.closePath(); ctx.fill();
+  // Red iris bloom + 2-shade
+  ctx.fillStyle = 'rgba(255,30,40,0.35)';
   ctx.beginPath(); ctx.arc(cx - 17 + f * 3, sy + 52 + bob, 6, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx + 17 + f * 3, sy + 52 + bob, 6, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#cc1a2a';
-  ctx.beginPath(); ctx.arc(cx - 17 + f * 3, sy + 52 + bob, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 17 + f * 3, sy + 52 + bob, 3, 0, Math.PI * 2); ctx.fill();
-  // Pupil
+  ctx.beginPath(); ctx.arc(cx - 17 + f * 3, sy + 52 + bob, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 17 + f * 3, sy + 52 + bob, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#1a0414';
-  ctx.beginPath(); ctx.arc(cx - 17 + f * 3, sy + 52 + bob, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 17 + f * 3, sy + 52 + bob, 1.5, 0, Math.PI * 2); ctx.fill();
-  // Evil glow
-  px(cx - 18 + f * 3, sy + 51 + bob, 1, 1, '#ffcc88');
-  px(cx + 16 + f * 3, sy + 51 + bob, 1, 1, '#ffcc88');
+  ctx.beginPath(); ctx.arc(cx - 17 + f * 3, sy + 52 + bob, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 17 + f * 3, sy + 52 + bob, 1.8, 0, Math.PI * 2); ctx.fill();
+  px((cx - 18 + f * 3) | 0, sy + 51 + bob, 1, 1, '#ffcc88');
+  px((cx + 16 + f * 3) | 0, sy + 51 + bob, 1, 1, '#ffcc88');
 
-  // Mouth with fangs
-  ctx.fillStyle = '#2a0410';
-  ctx.fillRect(cx - 12, sy + 62 + bob, 24, 8);
-  // Inner mouth (tongue)
-  ctx.fillStyle = '#8a1a3a';
-  ctx.fillRect(cx - 10, sy + 66 + bob, 20, 3);
-  ctx.fillStyle = '#cc2244';
-  ctx.fillRect(cx - 9, sy + 67 + bob, 18, 1);
-  // Fangs (upper)
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(cx - 8, sy + 62 + bob);
-  ctx.lineTo(cx - 5, sy + 70 + bob);
-  ctx.lineTo(cx - 2, sy + 62 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx + 2, sy + 62 + bob);
-  ctx.lineTo(cx + 5, sy + 70 + bob);
-  ctx.lineTo(cx + 8, sy + 62 + bob);
-  ctx.closePath(); ctx.fill();
-  // Fang shading
-  ctx.fillStyle = '#c0c0c0';
-  ctx.beginPath();
-  ctx.moveTo(cx - 4, sy + 62 + bob);
-  ctx.lineTo(cx - 5, sy + 70 + bob);
-  ctx.lineTo(cx - 6, sy + 62 + bob);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx + 4, sy + 62 + bob);
-  ctx.lineTo(cx + 5, sy + 70 + bob);
-  ctx.lineTo(cx + 6, sy + 62 + bob);
-  ctx.closePath(); ctx.fill();
+  // === MOUTH WITH FANGS (2-shade) ===
+  ctx.fillStyle = '#2a0410'; ctx.fillRect(cx - 12, sy + 62 + bob, 24, 8);
+  ctx.fillStyle = '#8a1a3a'; ctx.fillRect(cx - 10, sy + 66 + bob, 20, 3);
+  ctx.fillStyle = '#cc2244'; ctx.fillRect(cx - 9, sy + 67 + bob, 18, 1);
+  // Fangs (outline + base + shadow)
+  [[cx - 8, cx - 2], [cx + 2, cx + 8]].forEach(([x1, x2]) => {
+    const mx = (x1 + x2) / 2;
+    ctx.fillStyle = '#c0c0c0';
+    ctx.beginPath(); ctx.moveTo(x1 + 2, sy + 62 + bob); ctx.lineTo(mx + 1, sy + 70 + bob); ctx.lineTo(x2, sy + 62 + bob); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.moveTo(x1, sy + 62 + bob); ctx.lineTo(mx, sy + 70 + bob); ctx.lineTo(x2 - 2, sy + 62 + bob); ctx.closePath(); ctx.fill();
+  });
 
-  // Stubby feet with toes
-  px(sx + 9, sy + m.h - 7, 18, 1, '#2a1a08');
-  px(sx + 10, sy + m.h - 6, 16, 6, '#6a4a2a');
-  px(sx + 10, sy + m.h - 6, 16, 1, '#8a6a3a');
-  px(sx + 12, sy + m.h - 2, 1, 2, '#2a1a08');
-  px(sx + 17, sy + m.h - 2, 1, 2, '#2a1a08');
-  px(sx + 22, sy + m.h - 2, 1, 2, '#2a1a08');
-  px(sx + m.w - 27, sy + m.h - 7, 18, 1, '#2a1a08');
-  px(sx + m.w - 26, sy + m.h - 6, 16, 6, '#6a4a2a');
-  px(sx + m.w - 26, sy + m.h - 6, 16, 1, '#8a6a3a');
-  px(sx + m.w - 24, sy + m.h - 2, 1, 2, '#2a1a08');
-  px(sx + m.w - 19, sy + m.h - 2, 1, 2, '#2a1a08');
-  px(sx + m.w - 14, sy + m.h - 2, 1, 2, '#2a1a08');
+  // === FEET (2-shade) ===
+  [sx + 9, sx + m.w - 27].forEach((fx) => {
+    px(fx, sy + m.h - 7, 18, 1, '#2a1a08');
+    px(fx + 1, sy + m.h - 6, 16, 6, '#6a4a2a');
+    px(fx + 1, sy + m.h - 6, 16, 1, '#8a6a3a');
+    px(fx + 1, sy + m.h - 6, 5, 6, '#9a7a50');
+    [3, 8, 13].forEach((tx) => px(fx + tx, sy + m.h - 2, 1, 2, '#2a1a08'));
+  });
 }
 
 function drawProjectiles() {

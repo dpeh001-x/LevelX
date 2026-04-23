@@ -115,34 +115,73 @@
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">LevelX · <code>claude/debug-connection-zGgar</code></div>
-  <h1>Changelog — <span class="accent">Retention &amp; Juice Rework</span></h1>
-  <p class="lede">A phased rework layered on top of <code>v0.9.8</code>: save persistence, Web Audio SFX, achievements, daily challenges, respec, prestige, combo milestones, and a moment-to-moment juice pass. Every change lives in <code>maple_game.html</code>. No new assets, no build step.</p>
-  <div class="meta">Base: <code>v0.9.8</code> · All changes on <code>main</code></div>
+  <div class="eyebrow">LevelX · <code>v1.0.0</code></div>
+  <h1>Changelog — <span class="accent">v1.0.0 — Enemy Art Overhaul</span></h1>
+  <p class="lede">A full art pass on all 14 enemy types: unified 2-shade cel-shading, cuter proportions, double-sparkle eyes, and blush marks on friendly mobs. Every change lives in <code>maple_game.html</code>. No new assets, no build step.</p>
+  <div class="meta">Version: <code>v1.0.0</code> · Date: <code>2026-04-23</code> · Branch: <code>claude/improve-enemy-art-qUL1C</code></div>
 </header>
 
 <div class="summary-grid">
   <div class="summary-card">
-    <div class="phase">Phase 1</div>
-    <div class="title">Save + Web Audio</div>
-    <div class="diff">+143 / −2</div>
+    <div class="phase">Art</div>
+    <div class="title">2-Shade Cel Shading</div>
+    <div class="diff">All 14 enemy types</div>
   </div>
   <div class="summary-card">
-    <div class="phase">Phase 2</div>
-    <div class="title">Retention hooks</div>
-    <div class="diff">+343 / −12</div>
+    <div class="phase">Style</div>
+    <div class="title">Cute Proportions</div>
+    <div class="diff">Bigger eyes + blush</div>
   </div>
   <div class="summary-card">
-    <div class="phase">Phase 3</div>
-    <div class="title">Juice pass</div>
-    <div class="diff">bundled with Phase 2 commit</div>
+    <div class="phase">Consistency</div>
+    <div class="title">Unified Shadow Pass</div>
+    <div class="diff">Outline + base + shadow</div>
   </div>
   <div class="summary-card">
-    <div class="phase">Patches</div>
-    <div class="title">Reset + keybind fix</div>
-    <div class="diff">+28 / −8</div>
+    <div class="phase">Polish</div>
+    <div class="title">Double Sparkle Eyes</div>
+    <div class="diff">All enemies</div>
   </div>
 </div>
+
+<h2>v1.0.0 <span class="tag">2026-04-23</span></h2>
+
+<h3><span class="pill legendary">✦</span>Enemy Art — 2-Shade Cel-Shading Overhaul</h3>
+<p>All 14 enemy draw functions were rewritten with a consistent <strong>2-shade cel-shading</strong> technique: a dark outline shape, a base color fill (shade 1), and a solid hard-edged shadow blob covering the lower/right portion (shade 2), plus a small highlight dome at the upper-left. No gradients.</p>
+<ul>
+  <li><strong>Shellsnip (snail)</strong> — shell now shows clean purple cel-shadow on lower-right; bigger rounder eye with sparkle; body gets a proper shadow band; blush mark added.</li>
+  <li><strong>Gumbud (slime)</strong> — outline + 2-shade body; much larger eyes with double sparkle; pink blush ovals under eyes; wider smile.</li>
+  <li><strong>Capling / Sunback (mushroom / orange)</strong> — cap gets shadow band on lower 40%; highlight dome at top; cute round eyes replace flat pixel eyes; blush marks; foot highlight strip.</li>
+  <li><strong>Hexcap (horny mushroom)</strong> — same cap treatment; horns are now 2-shade bone with shadow half + tip highlight; red eyes kept as glowing 2-shade; clawed feet cleaned up.</li>
+  <li><strong>Grumpwood (stump)</strong> — barrel body gets right-side shadow strip + left highlight; top ring gains 2-shade treatment; eyes keep angry slant but are now rounder with brighter red pupils.</li>
+  <li><strong>Rotshade (zombie mushroom)</strong> — dark cap with shadow band; mold spots get 2-shade (dark/lime); glowing green eyes are now circular 2-shade; ooze drip kept; feet simplified.</li>
+  <li><strong>Dune Scuttler (scorpion)</strong> — body gets lower shadow strip + top highlight; tail segments each have 2-shade treatment; head has cute tiny glowing eyes; stinger tip is gold 2-shade.</li>
+  <li><strong>Duneborn Mummy</strong> — head/torso/legs all get consistent 2-shade (cream base + tan shadow on right); single glowing eye gets bloom + sparkle; bandage wraps kept as character detail.</li>
+  <li><strong>Bone Archer (skeleton)</strong> — skull, ribs, pelvis, and legs all get 2-shade (bone white + grey shadow on right half); cyan eye glows are now circles with bright core; rib highlights added.</li>
+  <li><strong>Pale Wraith</strong> — cloak body and hood are now clean 2-shade trapezoids; right-half shadow clearly defines the form; cyan eye glow kept with soft bloom; tendrils simplified to 2-shade.</li>
+  <li><strong>Gelmonarch (King Slime, boss)</strong> — body is now clean 2-shade blob with proper shadow and highlight dome; eyes enlarged to 8px radius with iris + pupil + double sparkle; crown kept ornate.</li>
+  <li><strong>Queen Fungara (Mushmom, boss)</strong> — cap shadow band added on lower 35%; spots simplified to clean 2-shade white circles; eyes improved with cel-shade angry slant + red iris bloom; fangs get shadow side; feet get highlight strip.</li>
+  <li><strong>Aetherion &amp; Gravitos (super/hyper bosses)</strong> — abstract art style retained as-is; their phase-based aura and orbital effects don't benefit from flat cel-shading.</li>
+</ul>
+
+<h3>Technique reference</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Purpose</th><th>Example color (slime)</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Outline</strong></td><td>Dark stroke/fill, 1–2px larger</td><td><code>#882255</code></td></tr>
+    <tr><td><strong>Shade 1 (base)</strong></td><td>Main body fill</td><td><code>#ff88bf</code></td></tr>
+    <tr><td><strong>Shade 2 (shadow)</strong></td><td>Hard-edged darker ellipse, lower portion</td><td><code>#d04488</code></td></tr>
+    <tr><td><strong>Highlight</strong></td><td>Small bright ellipse, upper-left</td><td><code>#ffddee</code></td></tr>
+    <tr><td><strong>Sparkle</strong></td><td>2×2 + 1×1 white pixels in pupil</td><td><code>#ffffff</code></td></tr>
+    <tr><td><strong>Blush</strong></td><td>Semi-transparent pink ellipse (friendly mobs only)</td><td><code>rgba(255,130,160,0.4)</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <b>Play URL:</b> <code>https://raw.githack.com/dpeh001-x/LevelX/preview/maple_game.html</code>
+</div>
+
+<h2>Pre-v1.0.0 <span class="tag">Legacy</span></h2>
 
 <div class="callout">
   <b>Heads-up.</b> An earlier implementation of these phases targeted <code>v0.5.1</code> and was preserved locally at tag <code>phase-1-2-3-on-v0.5.1</code>. This is the rebuild against the current <code>v0.9.8</code> codebase, which had moved substantially (new bosses like Gravitos, minimap/taxi, chibi character rewrite).
