@@ -251,6 +251,9 @@
 
 <h2>Patches <span class="tag">Follow-ups</span></h2>
 
+<h3><span class="pill success">🧪</span>Heal button on the main HUD</h3>
+<p>Added a one-click <b>🧪 Heal</b> pill next to the help/reset buttons (bottom-right of the HUD) so players don't have to remember the <kbd>R</kbd> hotkey. It calls the same <code>useQuickPotion('hp')</code> flow — smallest HP potion first — and auto-updates every frame: shows the player's total HP-potion count, disables when the bag is empty or HP is already full, and retargets the tooltip to explain why. Sits at <code>z-index: 60</code> with the other front-facing controls, using a green gradient to distinguish it from the red Reset pill.</p>
+
 <h3>Reset button</h3>
 <p>Destructive option inside the attributes modal (<kbd>U</kbd>), below Respec. Double-confirms, calls <code>clearSave()</code>, and reloads to class-select. Sets <code>game._resetting = true</code> first so the autosave / tab-hide / beforeunload handlers don't rewrite the save during the reload window.</p>
 <p>Also surfaced on the HUD as a small red <b>☠ Reset</b> pill next to the help button (bottom-right), so a friend loading the build can wipe the save without digging into the attributes menu. Reuses the same <code>resetSave()</code> flow. The pill sits at <code>z-index: 60</code> so it stays reachable even while the class-select modal (<code>.modal-overlay</code>, z-index 50) is open.</p>

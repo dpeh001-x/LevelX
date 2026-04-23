@@ -397,6 +397,35 @@
     box-shadow: 0 0 10px rgba(255,100,100,0.55);
   }
 
+  #heal-btn {
+    position: absolute; bottom: 14px; right: 130px;
+    padding: 5px 11px; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(40,120,60,0.92), rgba(30,90,50,0.92));
+    color: #e8ffe8;
+    border: 1px solid #4ebb6a; cursor: pointer;
+    font-size: 11px; font-weight: bold; font-family: inherit;
+    text-shadow: 1px 1px 2px #000;
+    transition: all 0.15s;
+    z-index: 60;
+    display: flex; align-items: center; gap: 4px;
+  }
+  #heal-btn:hover {
+    background: linear-gradient(135deg, rgba(60,160,80,0.98), rgba(40,120,60,0.98));
+    color: #fff;
+    box-shadow: 0 0 10px rgba(120,255,140,0.6);
+  }
+  #heal-btn:disabled {
+    opacity: 0.5; cursor: not-allowed;
+    box-shadow: none;
+  }
+  #heal-btn .heal-count {
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    padding: 1px 6px;
+    font-size: 10px;
+    color: #ffdd88;
+  }
+
   .help-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -651,7 +680,7 @@
 
   <div id="controls">
     Press <kbd>?</kbd> for Controls &nbsp;·&nbsp;
-    <kbd>F</kbd> Talk &nbsp;·&nbsp; <kbd>B</kbd> Bag &nbsp;·&nbsp; <kbd>R</kbd>/<kbd>T</kbd> Pots &nbsp;·&nbsp;
+    <kbd>F</kbd> Talk &nbsp;·&nbsp; <kbd>B</kbd> Bag &nbsp;·&nbsp; <kbd>R</kbd>/<kbd>T</kbd> Pots (or 🧪 Heal) &nbsp;·&nbsp;
     <kbd>N</kbd> Codex &nbsp;·&nbsp; <kbd>M</kbd> Mute
   </div>
 
@@ -711,6 +740,7 @@
 
   <button id="help-btn" onclick="openHelp()" title="Show controls (?)">?</button>
   <button id="reset-front-btn" onclick="resetSave()" title="Erase all progress and return to class select">☠ Reset</button>
+  <button id="heal-btn" onclick="useQuickPotion('hp')" title="Use an HP potion (R)">🧪 Heal <span class="heal-count" id="heal-btn-count">0</span></button>
 
   <div id="help-modal" class="modal-overlay">
     <div class="modal" style="position:relative; min-width:640px;">
@@ -13936,6 +13966,23 @@ function updateUI() {
   document.getElementById('crit').textContent = getCrit();
   document.getElementById('kills').textContent = game.kills;
   renderSkillBar();
+
+  // Heal button — show total HP potions owned, disable if none or HP full
+  const healBtn = document.getElementById('heal-btn');
+  if (healBtn) {
+    let hpPots = 0;
+    for (const p of POTION_ITEMS) {
+      if (p.type === 'hp') hpPots += (player.consumables[p.id] || 0);
+    }
+    document.getElementById('heal-btn-count').textContent = hpPots;
+    const atFullHp = player.hp >= getMaxHp();
+    healBtn.disabled = hpPots <= 0 || atFullHp;
+    healBtn.title = hpPots <= 0
+      ? 'No HP potions — buy some from a shop'
+      : atFullHp
+        ? 'HP already full'
+        : `Use an HP potion (R) — ${hpPots} available`;
+  }
 
   // Combo meter
   document.getElementById('combo-count').textContent = game.combo;
