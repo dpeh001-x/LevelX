@@ -1,0 +1,70 @@
+// Cinematic teaser — timeline & creative config. 1280x720, 30fps, 10s = 300 frames.
+const W = 1280, H = 720, FPS = 30;
+const BAR = 80;                 // letterbox bar height (top & bottom) -> 2.35 scope feel
+const ROOT = require('path').resolve(__dirname, '..', '..');
+
+// Grade presets: sharp.modulate args + light tint (r,g,b add via tint)
+const GRADE = {
+  cosmic:  { brightness: 1.02, saturation: 1.18, hue: 0,   tint: [120,140,200] },
+  fire:    { brightness: 1.06, saturation: 1.30, hue: -6,  tint: [255,150,90]  },
+  frost:   { brightness: 1.05, saturation: 1.12, hue: 8,   tint: [150,200,255] },
+  star:    { brightness: 1.04, saturation: 1.20, hue: 0,   tint: [180,170,230] },
+  dark:    { brightness: 0.96, saturation: 1.10, hue: 0,   tint: [150,150,180] },
+  neutral: { brightness: 1.0,  saturation: 1.12, hue: 0,   tint: null          },
+  lush:    { brightness: 1.03, saturation: 1.16, hue: -3,  tint: [150,210,170] },
+  night:   { brightness: 1.05, saturation: 1.24, hue: 0,   tint: [150,150,215] },
+};
+
+// Shot timeline. frames = duration. bg path relative to ROOT. kb = ken burns [s0,s1, panX, panY].
+// fx: optional per-shot effect flags. text: caption block.
+const OC = 'oc';   // octobaby boss-fight footage prefix
+const SHOTS = [
+  { id:'present', frames:50, bg:null, grade:'neutral',
+    text:{ kind:'present', main:'MOJI-STUDIOS', sub:'P R E S E N T S' } },
+
+  { id:'world', frames:100, bg:'backgrounds/bg_v3_zodiacSanctum.png', grade:'cosmic',
+    kb:[1.05,1.24, -0.05, 0.02], fadeIn:14,
+    text:{ kind:'lower', main:'A WORLD BEYOND THE EVERDAWN' } },
+  { id:'world2', frames:80, bg:'backgrounds/bg_v3_celestialAtrium.png', grade:'star',
+    kb:[1.06,1.22, 0.05, 0.0],
+    text:{ kind:'lower', main:'FORGE YOUR LEGEND' } },
+
+  // --- REAL IN-GAME FOOTAGE — geared Shinobi "MojiWorld" vs OCTOBABY (tentacles anchored, never knocked up), one dramatic cut per skill ---
+  { id:'octo_intro',  frames:30, gameplay:{ prefix:OC, start:0,   count:20 }, grade:'neutral', flashIn:true,
+    text:{ kind:'lower', main:'BOSS · OCTOBABY' } },
+  { id:'octo_stab',   frames:18, gameplay:{ prefix:OC, start:20,  count:18 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'STAB' } },
+  { id:'octo_back',   frames:20, gameplay:{ prefix:OC, start:38,  count:20 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'BACKSTAB' } },
+  { id:'octo_shur',   frames:20, gameplay:{ prefix:OC, start:58,  count:20 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'SHURIKEN' } },
+  { id:'octo_dash',   frames:20, gameplay:{ prefix:OC, start:78,  count:20 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'SMOKE DASH' } },
+  { id:'octo_flurry', frames:24, gameplay:{ prefix:OC, start:98,  count:24 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'FLURRY' } },
+  { id:'octo_shadow', frames:28, gameplay:{ prefix:OC, start:122, count:28 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'SHADOW STRIKE' } },
+  { id:'octo_blossom',frames:30, gameplay:{ prefix:OC, start:150, count:30 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'DEATH BLOSSOM' } },
+  { id:'octo_kage',   frames:30, gameplay:{ prefix:OC, start:180, count:30 }, grade:'neutral', flashIn:true, text:{ kind:'lower', main:'KAGE RUSH' } },
+  { id:'octo_ult',    frames:54, gameplay:{ prefix:OC, start:210, count:44 }, grade:'neutral', flashIn:true, flashAt:0.5,
+    text:{ kind:'lower', main:'HUNDRED-HAND SHADOW DANCE' } },
+
+  // --- TITANS — dramatic cinematic zoom-up ---
+  { id:'titan1', frames:54, bg:'backgrounds/bg_v3_interdimensionalAscension.png', grade:'cosmic',
+    kb:[1.04,1.42, 0.0, 0.0], flashIn:true, dim:0.5, shake:3,
+    sprite:{ seq:{ prefix:'Sprites/bosses/zodiac/idle/leo_', count:9, ext:'.webp', loops:2 },
+             path:'Sprites/bosses/zodiac/leo.png', enter:'rise', scale:0.64, grow:[0.90,1.32] },
+    text:{ kind:'lower', main:'FACE THE TITANS' } },
+  // Gravitos — cinematic villain EYES close-up: slow push into the glowing eyes
+  // while black borders close in to frame them in a menacing slit.
+  { id:'titan2', frames:50, bgSeq:{ prefix:'tools/teaser/assets/gravitos_eyes_', count:9, loops:2 }, grade:'fire',
+    kb:[1.06,1.34, 0.0, 0.0], flashIn:true, shake:4,
+    iris:{ t0:0.12, w:900, h:236, cx:672, cy:406 } },
+
+  { id:'classes', frames:56, bg:'backgrounds/bg_v3_bastionThrone.png', grade:'dark', dim:0.6,
+    kb:[1.08,1.16, 0.0, 0.0], fadeIn:6,
+    text:{ kind:'classes', main:'CHOOSE YOUR PATH',
+           items:['WARRIOR','ROGUE','MAGE','ARCHER'] } },
+
+  { id:'logo', frames:86, bg:'backgrounds/bg_v3_interdimensionalAscension.png', grade:'cosmic',
+    kb:[1.03,1.12, 0.0, 0.0], dim:0.62, fadeIn:8, fadeOut:14,
+    text:{ kind:'logo', main:'MOJIWORLD', sub:'R I S E   ·   F O R G E   ·   A S C E N D',
+           cta:'YOUR LEGEND AWAITS  ·  MOJI-STUDIOS.COM' } },
+];
+
+const TOTAL = SHOTS.reduce((a,s)=>a+s.frames,0);
+module.exports = { W, H, FPS, BAR, ROOT, GRADE, SHOTS, TOTAL };

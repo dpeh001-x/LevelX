@@ -1,0 +1,64 @@
+// Asset loading + cached overlays (vignette, letterbox, film grain).
+const sharp = require('sharp');
+const path = require('path');
+const { W, H, BAR, ROOT } = require('./config');
+
+const WBW = 1920, WBH = 1080;          // working bg resolution (zoom headroom for ken burns)
+const _bg = new Map(), _spr = new Map();
+
+async function loadBg(rel) {
+  if (_bg.has(rel)) return _bg.get(rel);
+  const buf = await sharp(path.join(ROOT, rel))
+    .resize(WBW, WBH, { fit: 'cover', position: 'centre' })
+    .removeAlpha().toColourspace('srgb').raw().toBuffer();
+  const o = { buf, w: WBW, h: WBH }; _bg.set(rel, o); return o;
+}
+
+async function loadSprite(rel, targetH, noTrim) {
+  const key = rel + '@' + targetH + (noTrim ? '@nt' : '');
+  if (_spr.has(key)) return _spr.get(key);
+  let img = sharp(path.join(ROOT, rel));
+  if (!noTrim) img = img.trim({ threshold: 10 });   // noTrim: keep fixed canvas so anim frames don't jitter
+  const r = await img.resize({ height: targetH }).png().toBuffer({ resolveWithObject: true });
+  const o = { buf: r.data, w: r.info.width, h: r.info.height }; _spr.set(key, o); return o;
+}
+
+// ---- overlays (built once) ----
+let _vig = null, _box = null, _grain = null;
+
+async function vignette() {
+  if (_vig) return _vig;
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><radialGradient id="v" cx="50%" cy="48%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="62%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.62"/>
+    </radialGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#v)"/></svg>`;
+  _vig = await sharp(Buffer.from(svg)).png().toBuffer(); return _vig;
+}
+
+async function letterbox() {
+  if (_box) return _box;
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="${W}" height="${BAR}" fill="#000"/>
+    <rect x="0" y="${H - BAR}" width="${W}" height="${BAR}" fill="#000"/></svg>`;
+  _box = await sharp(Buffer.from(svg)).png().toBuffer(); return _box;
+}
+
+// 8 film-grain tiles, subtle, soft-light blended downstream
+async function grain() {
+  if (_grain) return _grain;
+  _grain = [];
+  for (let g = 0; g < 8; g++) {
+    const px = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      const v = 128 + ((Math.random() - 0.5) * 110) | 0;
+      px[i*4] = v; px[i*4+1] = v; px[i*4+2] = v; px[i*4+3] = 20;
+    }
+    _grain.push(await sharp(px, { raw: { width: W, height: H, channels: 4 } }).png().toBuffer());
+  }
+  return _grain;
+}
+
+module.exports = { loadBg, loadSprite, vignette, letterbox, grain, WBW, WBH };
