@@ -1,0 +1,18 @@
+const sharp=require('sharp'); const fs=require('fs'); const path=require('path');
+const R=require('./render');
+const picks=[18,70,150,175,205,245,285];
+(async()=>{
+  await R.init(); require('fs').mkdirSync(R.OUT,{recursive:true});
+  fs.mkdirSync('tools/teaser/_probe',{recursive:true});
+  for(const f of picks){ await R.frame(f);
+    const src=path.join(R.OUT,'f_'+String(f).padStart(4,'0')+'.png');
+    fs.copyFileSync(src,`tools/teaser/_probe/t_${f}.png`); console.log('frame',f); }
+  // contact sheet 2 cols
+  const cell=480,ch=270,cols=2,rows=Math.ceil(picks.length/cols);
+  const comps=await Promise.all(picks.map(async(f,i)=>({
+    input:await sharp(`tools/teaser/_probe/t_${f}.png`).resize(cell,ch).png().toBuffer(),
+    left:(i%cols)*cell, top:Math.floor(i/cols)*ch })));
+  await sharp({create:{width:cols*cell,height:rows*ch,channels:3,background:{r:0,g:0,b:0}}})
+    .composite(comps).jpeg({quality:82}).toFile('tools/teaser/_probe/test_sheet.jpg');
+  console.log('sheet done');
+})().catch(e=>{console.error(e);process.exit(1);});

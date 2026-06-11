@@ -1,0 +1,137 @@
+// Main render loop: timeline -> composited frames in tools/teaser/frames/.
+const sharp = require('sharp');
+const fs = require('fs'); const path = require('path');
+const { W, H, BAR, SHOTS, TOTAL } = require('./config');
+const A = require('./assets');
+const { renderBase, fadeAlpha } = require('./shots');
+
+const OUT = path.join(__dirname, 'frames');
+const DISS = 8;
+const clamp = (x,a,b)=>x<a?a:x>b?b:x;
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+// first frame of the (real) gameplay section — for the recording timecode
+let _recStart = null;
+function recStartFrame(){
+  if (_recStart != null) return _recStart;
+  let s = 0; for (const sh of SHOTS){ if (sh.gameplay){ _recStart = s; return s; } s += sh.frames; }
+  _recStart = 0; return 0;
+}
+// camcorder "REC" overlay marking the footage as genuine in-game capture
+function recOverlay(f){
+  const n = Math.max(0, f - recStartFrame());
+  const sec = Math.floor(n/30), ff = n%30, ss = sec%60, mm = Math.floor(sec/60);
+  const p2 = v => String(v).padStart(2,'0');
+  const tc = `00:${p2(mm)}:${p2(ss)}:${p2(ff)}`;
+  const bx=46, by=96, L=38, th=4;
+  const dot = (f % 26 < 17) ? 0.95 : 0.12;
+  const br = (x1,y1,x2,y2)=>`<rect x="${Math.min(x1,x2)}" y="${Math.min(y1,y2)}" width="${Math.abs(x2-x1)||th}" height="${Math.abs(y2-y1)||th}" fill="#fff" fill-opacity="0.85"/>`;
+  const ts = 'font-family="Arial,Helvetica,sans-serif" font-weight="700" fill="#fff" stroke="#000" stroke-opacity="0.6" stroke-width="3" paint-order="stroke"';
+  return Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`
+    + br(bx,by,bx+L,by)+br(bx,by,bx,by+L)
+    + br(W-bx-L,by,W-bx,by)+br(W-bx,by,W-bx,by+L)
+    + br(bx,H-by-L,bx,H-by)+br(bx,H-by,bx+L,H-by)
+    + br(W-bx-L,H-by,W-bx,H-by)+br(W-bx,H-by-L,W-bx,H-by)
+    + `<circle cx="${bx+16}" cy="${by+25}" r="8" fill="#ff3030" fill-opacity="${dot}"/>`
+    + `<text x="${bx+32}" y="${by+32}" font-size="19" letter-spacing="2" ${ts}>REC</text>`
+    + `<text x="${W/2}" y="${by+32}" text-anchor="middle" font-size="19" letter-spacing="3" ${ts}>REAL IN-GAME FOOTAGE</text>`
+    + `<text x="${W-bx}" y="${by+32}" text-anchor="end" font-size="19" letter-spacing="1" ${ts}>${tc}</text>`
+    + `</svg>`);
+}
+
+// frame -> {shot index, frame within shot, shot start}
+function locate(f){ let s=0; for(let i=0;i<SHOTS.length;i++){ if(f<s+SHOTS[i].frames) return {i,k:f-s,start:s}; s+=SHOTS[i].frames; } return {i:SHOTS.length-1,k:SHOTS[SHOTS.length-1].frames-1,start:s-SHOTS[SHOTS.length-1].frames}; }
+
+let VIG, BOX, GRAIN;
+function tl(shot,k){ return (k+0.5)/shot.frames; }
+
+async function frame(f){
+  const { i,k } = locate(f);
+  const cur = SHOTS[i]; const next = SHOTS[i+1];
+  let img = await renderBase(cur, tl(cur,k));
+
+  // cross-dissolve into next (only when next is a soft cut, i.e. not a flash cut)
+  const tail = cur.frames - k - 1;            // frames remaining in current shot
+  if (next && !next.flashIn && tail < DISS){
+    const a = (DISS - tail) / (DISS+1);        // 0..~0.9 ramp
+    const inc = await renderBase(next, tl(next, k - cur.frames + (DISS - tail)));
+    img = await sharp(img).composite([{ input: await fadeAlpha(inc, a) }]).png().toBuffer();
+  }
+
+  const layers = [];
+  // white flash on the first frames of a flashIn shot (hard cut punch)
+  if (cur.flashIn && k < 4){
+    const fa = (4 - k)/4 * 0.85;
+    layers.push({ input:{ create:{ width:W,height:H,channels:4,
+      background:{ r:255,g:255,b:255,alpha:fa } } }, blend:'over' });
+  }
+  // mid-shot impact flash (boss reaches full zoom)
+  if (cur.flashAt != null){
+    const ft = (k+0.5)/cur.frames, d = Math.abs(ft - cur.flashAt);
+    if (d < 0.06) layers.push({ input:{ create:{ width:W,height:H,channels:4,
+      background:{ r:255,g:245,b:230,alpha:(1-d/0.06)*0.8 } } }, blend:'over' });
+  }
+  layers.push({ input: GRAIN[f % GRAIN.length], blend:'soft-light' });
+  layers.push({ input: VIG });
+  // iris / closing-border framing (villain eyes) — black borders squeeze inward to a
+  // centred window over the shot. Replaces the standard letterbox for this shot.
+  if (cur.iris){
+    const ir = cur.iris, tl = (k+0.5)/cur.frames;
+    let p = (tl - (ir.t0||0)) / (1 - (ir.t0||0)); p = clamp(p,0,1);
+    const e = p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;          // easeInOut
+    const winW = Math.round(lerp(W, ir.w, e));
+    const winH = Math.round(lerp(H - 2*BAR, ir.h, e));
+    const cy = (ir.cy != null ? ir.cy : H/2);
+    const cx = (ir.cx != null ? ir.cx : W/2);
+    let topY = clamp(Math.round(cy - winH/2), 0, H);
+    let botY = clamp(Math.round(cy + winH/2), 0, H);
+    let leftX = clamp(Math.round(cx - winW/2), 0, W);
+    let rightX = clamp(Math.round(cx + winW/2), 0, W);
+    const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`
+      + `<rect x="0" y="0" width="${W}" height="${topY}" fill="#000"/>`
+      + `<rect x="0" y="${botY}" width="${W}" height="${H-botY}" fill="#000"/>`
+      + `<rect x="0" y="${topY}" width="${leftX}" height="${botY-topY}" fill="#000"/>`
+      + `<rect x="${rightX}" y="${topY}" width="${W-rightX}" height="${botY-topY}" fill="#000"/></svg>`;
+    layers.push({ input: Buffer.from(svg) });
+  } else {
+    layers.push({ input: BOX });
+  }
+
+  // recording HUD on the real in-game footage
+  if (cur.gameplay) layers.push({ input: recOverlay(f) });
+
+  // edge fades (from/to black)
+  let fade = 0;
+  if (f < 6) fade = Math.max(fade, 1 - f/6);                      // cold open
+  if (cur.fadeIn && k < cur.fadeIn) fade = Math.max(fade, 1 - k/cur.fadeIn);
+  if (cur.fadeOut && (cur.frames-1-k) < cur.fadeOut) fade = Math.max(fade, 1 - (cur.frames-1-k)/cur.fadeOut);
+  if (fade > 0.001) layers.push({ input:{ create:{ width:W,height:H,channels:4,
+    background:{ r:0,g:0,b:0,alpha:clamp(fade,0,1) } } }, blend:'over' });
+
+  const file = path.join(OUT, 'f_' + String(f).padStart(4,'0') + '.png');
+  await sharp(img).composite(layers).png({ compressionLevel:6 }).toFile(file);
+}
+
+async function pool(n, conc){
+  let next = 0, done = 0;
+  async function worker(){ while(next < n){ const f = next++; await frame(f); done++;
+    if (done % 20 === 0 || done === n) process.stdout.write(`  rendered ${done}/${n}\n`); } }
+  await Promise.all(Array.from({length:conc}, worker));
+}
+
+async function init(){
+  [VIG, BOX, GRAIN] = await Promise.all([A.vignette(), A.letterbox(), A.grain()]);
+  for (const s of SHOTS) if (s.bg) await A.loadBg(s.bg);   // warm raw bg cache (sequential = less RAM spike)
+}
+
+async function main(){
+  fs.rmSync(OUT,{recursive:true,force:true}); fs.mkdirSync(OUT,{recursive:true});
+  console.log(`Preparing overlays + warming asset cache (${TOTAL} frames)...`);
+  await init();
+  const t0 = Date.now();
+  await pool(TOTAL, 4);
+  console.log(`Done: ${TOTAL} frames in ${((Date.now()-t0)/1000).toFixed(1)}s -> ${OUT}`);
+}
+
+module.exports = { init, frame, locate, OUT };
+if (require.main === module) main().catch(e=>{ console.error(e); process.exit(1); });

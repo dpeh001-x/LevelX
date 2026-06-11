@@ -1,0 +1,102 @@
+// Render one shot's base frame (graded bg + ken burns + sprite + dim + caption) -> RGB PNG buffer.
+const sharp = require('sharp');
+const { W, H, BAR, GRADE, ROOT } = require('./config');
+const A = require('./assets');
+const text = require('./text');
+const path = require('path');
+
+const lerp = (a,b,t)=>a+(b-a)*t;
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const clamp = (x,a,b)=>x<a?a:x>b?b:x;
+
+function kenBurns(bg, kb, t, shake) {
+  const z = lerp(kb[0], kb[1], ease(t));
+  const cw = Math.round(A.WBW / z), ch = Math.round(A.WBH / z);
+  const mx = (A.WBW - cw)/2, my = (A.WBH - ch)/2;
+  let left = mx + kb[2]*mx*(t*2-1), top = my + kb[3]*my*(t*2-1);
+  if (shake) { left += Math.sin(t*120)*shake; top += Math.cos(t*97)*shake; }
+  left = Math.round(clamp(left,0,A.WBW-cw)); top = Math.round(clamp(top,0,A.WBH-ch));
+  return sharp(bg.buf, { raw:{ width:A.WBW, height:A.WBH, channels:3 } })
+    .extract({ left, top, width:cw, height:ch }).resize(W, H);
+}
+
+async function fadeAlpha(buf, op) {
+  if (op >= 0.999) return buf;
+  return sharp(buf).ensureAlpha().linear([1,1,1,op],[0,0,0,0]).png().toBuffer();
+}
+
+async function placeSprite(shot, t) {
+  const sp = shot.sprite; const targetH = Math.round(H * sp.scale);
+  let srcPath = sp.path, noTrim = false;
+  if (sp.seq) {                                  // animated sprite — cycle frames on a fixed canvas
+    const loops = sp.seq.loops || 1;
+    const fi = Math.floor(t * loops * sp.seq.count) % sp.seq.count;
+    srcPath = sp.seq.prefix + fi + (sp.seq.ext || '.webp');
+    noTrim = true;
+  }
+  const base = await A.loadSprite(srcPath, Math.round(H*0.92), noTrim);
+  let scale = 1, dy = 0, op = 1;
+  if (sp.enter === 'rise') {
+    const p = clamp(t/0.55,0,1); dy = (1-ease(p)) * 220; op = clamp(t/0.22,0,1);
+    scale = lerp(0.96,1.0,ease(p));
+  } else if (sp.enter === 'slam') {
+    const p = clamp(t/0.28,0,1); scale = lerp(1.25,1.0,ease(p)); op = clamp(t/0.14,0,1);
+    dy = (1-ease(p)) * -40;
+  }
+  // continuous dolly-in (cinematic zoom-up onto the titan)
+  if (sp.grow) scale *= lerp(sp.grow[0], sp.grow[1], ease(t));
+  // gentle bob after entry
+  dy += Math.sin((t-0.3)*6) * 6 * clamp((t-0.3)/0.2,0,1);
+  let h = Math.min(Math.round(targetH*scale), H-2);
+  let w = Math.round(base.w * (h/base.h));
+  if (w > W-2) { w = W-2; h = Math.round(base.h * (w/base.w)); }
+  let spr = await sharp(base.buf).resize({ height:h }).png().toBuffer();
+  spr = await fadeAlpha(spr, op);
+  let left = Math.round(W/2 - w/2); if (left < 0) left = 0;
+  let top = Math.round((H-BAR-14) - h + dy); if (top < 0) top = 0; if (top+h > H) top = H-h;
+  return { input: spr, left, top };
+}
+
+async function renderBase(shot, t) {
+  let pipe;
+  if (shot.gameplay) {
+    const gp = shot.gameplay;
+    const local = Math.max(0, Math.min(gp.count-1, Math.round(t*(gp.count-1))));
+    const idx = (gp.start || 0) + local;
+    const file = path.join(ROOT,'tools','teaser','gameplay', gp.prefix+'_'+String(idx).padStart(3,'0')+'.jpg');
+    const z = shot.gpZoom || 1.12;  // mild zoom — keeps the boss + wide tentacle spread + hero all in frame
+    const zw = Math.round(W*z), zh = Math.round(H*z);
+    const zbuf = await sharp(file).resize(zw, zh, { fit:'cover', position:'centre' })
+      .extract({ left: Math.round((zw-W)/2), top: Math.round((zh-H)/2), width: W, height: H }).toBuffer();
+    pipe = sharp(zbuf);
+  } else if (shot.bgSeq) {                       // animated background sequence (e.g. Gravitos eyes)
+    const bs = shot.bgSeq, loops = bs.loops || 1;
+    const fi = Math.floor(t * loops * bs.count) % bs.count;
+    const bg = await A.loadBg(bs.prefix + fi + (bs.ext || '.png'));
+    pipe = kenBurns(bg, shot.kb || [1.1,1.1,0,0], t, shot.shake);
+  } else if (shot.bg) {
+    const bg = await A.loadBg(shot.bg);
+    pipe = kenBurns(bg, shot.kb || [1.1,1.1,0,0], t, shot.shake);
+  } else {
+    pipe = sharp({ create:{ width:W, height:H, channels:3, background:{r:6,g:7,b:12} } });
+  }
+  const g = GRADE[shot.grade] || GRADE.neutral;
+  pipe = pipe.modulate({ brightness:g.brightness, saturation:g.saturation, hue:g.hue });
+  let img = await pipe.removeAlpha().png().toBuffer();
+
+  const comps = [];
+  if (g.tint) comps.push({ input:{ create:{ width:W,height:H,channels:4,
+      background:{ r:g.tint[0],g:g.tint[1],b:g.tint[2],alpha:0.12 } } }, blend:'soft-light' });
+  if (shot.dim) comps.push({ input:{ create:{ width:W,height:H,channels:4,
+      background:{ r:0,g:0,b:0,alpha:(1-shot.dim) } } }, blend:'over' });
+  if (comps.length) img = await sharp(img).composite(comps).png().toBuffer();
+
+  const layers = [];
+  if (shot.sprite) layers.push(await placeSprite(shot, t));
+  const cap = await text.render(shot, t);
+  if (cap) layers.push({ input: cap });
+  if (layers.length) img = await sharp(img).composite(layers).png().toBuffer();
+  return img; // 1280x720 RGB-ish PNG
+}
+
+module.exports = { renderBase, fadeAlpha };
